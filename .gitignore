@@ -1,0 +1,21 @@
+# Local build output
+/build/
+/out/
+/dist/
+/artifacts/
+
+# Tool and editor state
+/.cache/
+/.vscode/
+/.idea/
+*.swp
+*.swo
+
+# Generated debugging output
+*.log
+*.img
+*.iso
+*.qcow2
+*.elf
+*.map
+*.dSYM/
