@@ -10,10 +10,12 @@
 %define VBE_MODE_INFO_ADDRESS 0x6000
 %define DAWN_CONTEXT_MAGIC_LOW 0x43545831
 %define DAWN_CONTEXT_MAGIC_HIGH 0x4441574e
-%define DAWN_CONTEXT_VERSION 3
-%define DAWN_CONTEXT_SIZE 104
+%define DAWN_CONTEXT_VERSION 4
+%define DAWN_CONTEXT_SIZE 136
 %define DAWN_MEMORY_DESCRIPTOR_SIZE 24
 %define DAWN_MEMORY_DESCRIPTOR_VERSION 1
+%define DAWN_MEMORY_RANGE_DESCRIPTOR_SIZE 16
+%define DAWN_MEMORY_RANGE_DESCRIPTOR_VERSION 1
 %define DAWN_MEMORY_USABLE 1
 %define DAWN_PIXEL_FORMAT_BGR888 3
 %define DAWN_MEMORY_MAP_MAX_ENTRIES 32
@@ -80,10 +82,6 @@ capture_e820:
     jb .failure
     cmp dword [es:di + 16], 1
     jne .reserved
-    cmp dword [es:di + 4], 0
-    jne .usable
-    cmp dword [es:di], 0x00100000
-    jb .reserved
 .usable:
     mov dword [es:di + 16], DAWN_MEMORY_USABLE
     jmp .normalized
@@ -197,6 +195,14 @@ seal_dawn_context:
     mov dword [DAWN_CONTEXT_ADDRESS + 60], 0
     mov dword [DAWN_CONTEXT_ADDRESS + 64], 0x00010000
     mov dword [DAWN_CONTEXT_ADDRESS + 68], 0
+    mov dword [DAWN_CONTEXT_ADDRESS + 104], boot_reservations
+    mov dword [DAWN_CONTEXT_ADDRESS + 108], 0
+    mov dword [DAWN_CONTEXT_ADDRESS + 112], 2 * DAWN_MEMORY_RANGE_DESCRIPTOR_SIZE
+    mov dword [DAWN_CONTEXT_ADDRESS + 116], 0
+    mov dword [DAWN_CONTEXT_ADDRESS + 120], DAWN_MEMORY_RANGE_DESCRIPTOR_SIZE
+    mov dword [DAWN_CONTEXT_ADDRESS + 124], 0
+    mov dword [DAWN_CONTEXT_ADDRESS + 128], DAWN_MEMORY_RANGE_DESCRIPTOR_VERSION
+    mov dword [DAWN_CONTEXT_ADDRESS + 132], 2
     ret
 
 debug_dawn_sealed:
@@ -323,6 +329,13 @@ disk_address_packet:
     dw 0x0000
     dw 0x1000
     dq (1 + STAGE2_SECTORS)
+
+align 8
+boot_reservations:
+    dq 0x0000000000000000
+    dq 0x0000000000100000
+    dq PULSE_LOAD_ADDRESS
+    dq PULSE_BYTES
 
 align 8
 gdt_start:

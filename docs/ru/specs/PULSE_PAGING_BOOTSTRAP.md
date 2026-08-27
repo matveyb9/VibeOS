@@ -20,7 +20,7 @@
 | Permissions | Present и writable; executable, пока действует ранний bootstrap |
 | LA57 | Явно отклоняется в этой первой four-level implementation |
 
-Identity range четырёх ГиБ сохраняет доступ к Pulse на 2 МиБ, Dawn Context, раннему stack, активным page table, low I/O layout QEMU и firmware framebuffer range для первой Prism software-renderer milestone. Legacy BIOS producer резервирует первый MiB до того, как Pulse получает map, поэтому early frame allocator не может выбрать эти bootstrap-owned low-memory location. Mapping намеренно широк и включает region, которые будущие mapping Pulse классифицируют как RAM или MMIO до применения более узких permissions.
+Identity range четырёх ГиБ сохраняет доступ к Pulse на 2 МиБ, Dawn Context, раннему stack, активным page table, low I/O layout QEMU и firmware framebuffer range для первой Prism software-renderer milestone. Dawn Context v4 содержит explicit boot-owned physical range: early allocator расширяет их до frame и никогда не возвращает покрытый frame. Поэтому Legacy BIOS producer защищает свой bootstrap region первого MiB, даже когда firmware представляет его как usable RAM. Mapping намеренно широк и включает region, которые будущие mapping Pulse классифицируют как RAM или MMIO до применения более узких permissions.
 
 ## Ограничения и следующее изменение
 

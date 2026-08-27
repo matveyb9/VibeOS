@@ -10,7 +10,7 @@ VibeOS is not a Linux distribution. Its current architecture deliberately begins
 
 ## Current status
 
-VibeOS is in **early platform bring-up**, not an installable operating-system release. A reproducible x86_64 QEMU path now reaches the common Pulse runtime through both UEFI/OVMF and Legacy BIOS/SeaBIOS Prelude loaders. The verified probes cover normalized Dawn Context v3 memory descriptors, an early four-GiB identity map, interrupt/timer handling, the bootstrap physical allocator and scheduler state, native component probes, and software-rendered Prism/Canvas/Horizon output.
+VibeOS is in **early platform bring-up**, not an installable operating-system release. A reproducible x86_64 QEMU path now reaches the common Pulse runtime through both UEFI/OVMF and Legacy BIOS/SeaBIOS Prelude loaders. The verified probes cover normalized Dawn Context v4 memory descriptors and explicit boot-owned reservations, an early four-GiB identity map, interrupt/timer handling, the bootstrap physical allocator and scheduler state, native component probes, and software-rendered Prism/Canvas/Horizon output.
 
 The Legacy BIOS path uses a two-stage self-owned Prelude image, E820 normalization, VBE `0x118` linear output, and a `BGR888` framebuffer contract. It is verified in QEMU/SeaBIOS only. Neither path is a claim of physical-hardware compatibility, storage installation, user-space isolation, network support, or v1.0 completeness.
 
@@ -43,7 +43,7 @@ Read the [roadmap](docs/en/ROADMAP.md) for sequencing and completion criteria.
 ## Explore the project
 
 - [Architecture overview](docs/en/ARCHITECTURE.md) and [repository organisation](docs/en/REPOSITORY.md).
-- [Dawn Context v3](docs/en/specs/DAWN_CONTEXT.md), [Pulse paging bootstrap](docs/en/specs/PULSE_PAGING_BOOTSTRAP.md), and [Prism/Canvas bootstrap](docs/en/specs/PRISM_CANVAS_BOOTSTRAP.md).
+- [Dawn Context v4](docs/en/specs/DAWN_CONTEXT.md), [Pulse paging bootstrap](docs/en/specs/PULSE_PAGING_BOOTSTRAP.md), and [Prism/Canvas bootstrap](docs/en/specs/PRISM_CANVAS_BOOTSTRAP.md).
 - [Documentation policy](docs/en/DOCUMENTATION.md) and [contribution workflow](docs/en/CONTRIBUTING.md).
 - Planned [application platform and Vibe SDK](docs/en/SDK.md).
 

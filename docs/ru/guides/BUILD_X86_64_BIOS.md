@@ -29,7 +29,7 @@ make check-bios
 
 ## Границы и безопасность
 
-Этот profile пока проверен только на legacy BIOS emulation QEMU. Он владеет E820 collection и VBE mode choice, пока доступны BIOS service. Первый MiB консервативно нормализуется как reserved, так как там находятся active BIOS bootstrap, temporary Pulse staging data и transition page table. Physical legacy-BIOS hardware, alternate video mode, USB input, ACPI device discovery и disk-filesystem loading пока не являются поддерживаемыми claims. Не записывайте development image на physical media, пока явно не проверены target hardware и recovery procedure.
+Этот profile пока проверен только на legacy BIOS emulation QEMU. Он владеет E820 collection и VBE mode choice, пока доступны BIOS service. Dawn Context v4 публикует первый MiB и загруженный Pulse image как explicit boot-owned reservation; затем Pulse исключает каждый покрытый frame 4 KiB, даже когда E820 сообщает, что он usable. Первый range содержит active BIOS bootstrap, temporary Pulse staging data и transition page table. Physical legacy-BIOS hardware, alternate video mode, USB input, ACPI device discovery и disk-filesystem loading пока не являются поддерживаемыми claims. Не записывайте development image на physical media, пока явно не проверены target hardware и recovery procedure.
 
 ## Источники
 

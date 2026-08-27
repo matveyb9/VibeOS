@@ -12,6 +12,7 @@
 #define PRELUDE_PULSE_LOAD_ADDRESS UINT64_C(0x00200000)
 #define PRELUDE_PAGE_SIZE ((UINTN)4096)
 #define PRELUDE_PULSE_STACK_PAGES ((UINTN)32)
+#define PRELUDE_BOOT_RESERVATION_CAPACITY ((uint32_t)2)
 
 typedef void(__attribute__((sysv_abi)) *PRELUDE_PULSE_ENTRY)(const DAWN_CONTEXT *context);
 
@@ -26,6 +27,8 @@ static CHAR16 prelude_banner[] = {
 };
 
 static DAWN_CONTEXT dawn_context;
+static DAWN_MEMORY_RANGE prelude_boot_reservations[PRELUDE_BOOT_RESERVATION_CAPACITY];
+static uint32_t prelude_boot_reservation_count;
 
 static EFI_GUID prelude_graphics_output_protocol_guid = {
     UINT32_C(0x9042a9de), 0x23dc, 0x4a38, {0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a}};
@@ -38,6 +41,36 @@ static void prelude_copy_bytes(void *destination, const void *source, UINTN size
     for (index = 0; index < size; ++index) {
         output[index] = input[index];
     }
+}
+
+static EFI_STATUS prelude_record_boot_reservation(uint64_t physical_start, uint64_t byte_size) {
+    uint32_t index;
+    uint32_t insert_index;
+
+    if (byte_size == 0U || physical_start > UINT64_MAX - byte_size ||
+        prelude_boot_reservation_count >= PRELUDE_BOOT_RESERVATION_CAPACITY) {
+        return EFI_OUT_OF_RESOURCES;
+    }
+
+    insert_index = prelude_boot_reservation_count;
+    while (insert_index > 0U &&
+           physical_start < prelude_boot_reservations[insert_index - 1U].physical_start) {
+        prelude_boot_reservations[insert_index] = prelude_boot_reservations[insert_index - 1U];
+        --insert_index;
+    }
+    prelude_boot_reservations[insert_index].physical_start = physical_start;
+    prelude_boot_reservations[insert_index].byte_size = byte_size;
+    ++prelude_boot_reservation_count;
+
+    for (index = 1U; index < prelude_boot_reservation_count; ++index) {
+        uint64_t previous_limit = prelude_boot_reservations[index - 1U].physical_start +
+                                  prelude_boot_reservations[index - 1U].byte_size;
+
+        if (previous_limit > prelude_boot_reservations[index].physical_start) {
+            return EFI_LOAD_ERROR;
+        }
+    }
+    return EFI_SUCCESS;
 }
 
 static EFI_STATUS prelude_capture_dawn_context(EFI_SYSTEM_TABLE *system_table) {
@@ -111,6 +144,12 @@ static EFI_STATUS prelude_capture_dawn_context(EFI_SYSTEM_TABLE *system_table) {
     dawn_context.memory_descriptor_size = sizeof(DAWN_MEMORY_DESCRIPTOR);
     dawn_context.memory_descriptor_version = DAWN_MEMORY_DESCRIPTOR_VERSION;
     dawn_context.reserved = 0;
+    dawn_context.boot_reservations_physical_address = (uint64_t)(UINTN)prelude_boot_reservations;
+    dawn_context.boot_reservations_size =
+        (uint64_t)prelude_boot_reservation_count * sizeof(DAWN_MEMORY_RANGE);
+    dawn_context.boot_reservation_descriptor_size = sizeof(DAWN_MEMORY_RANGE);
+    dawn_context.boot_reservation_descriptor_version = DAWN_MEMORY_RANGE_VERSION;
+    dawn_context.boot_reservation_count = prelude_boot_reservation_count;
     return EFI_SUCCESS;
 }
 
@@ -172,6 +211,10 @@ static EFI_STATUS prelude_load_pulse(
     }
 
     prelude_copy_bytes((void *)(UINTN)load_address, prelude_pulse_image_begin, pulse_size);
+    status = prelude_record_boot_reservation(load_address, pages * PRELUDE_PAGE_SIZE);
+    if (status != EFI_SUCCESS) {
+        return status;
+    }
     *entry_address = load_address;
     return EFI_SUCCESS;
 }
@@ -186,6 +229,11 @@ static EFI_STATUS prelude_prepare_pulse_stack(EFI_SYSTEM_TABLE *system_table) {
         return status;
     }
 
+    status = prelude_record_boot_reservation(
+        stack_base, PRELUDE_PULSE_STACK_PAGES * PRELUDE_PAGE_SIZE);
+    if (status != EFI_SUCCESS) {
+        return status;
+    }
     dawn_context.kernel_stack_top = stack_base + (PRELUDE_PULSE_STACK_PAGES * PRELUDE_PAGE_SIZE);
     dawn_context.kernel_stack_size = PRELUDE_PULSE_STACK_PAGES * PRELUDE_PAGE_SIZE;
     return EFI_SUCCESS;

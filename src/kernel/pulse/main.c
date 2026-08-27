@@ -45,6 +45,12 @@ static int pulse_context_is_valid(const DAWN_CONTEXT *context) {
            context->kernel_stack_size >= 4096U && context->framebuffer_physical_address != 0U &&
            context->framebuffer_byte_size != 0U && context->framebuffer_width != 0U &&
            context->framebuffer_height != 0U && context->framebuffer_pixels_per_scan_line >= context->framebuffer_width &&
+           context->boot_reservations_physical_address != 0U && context->boot_reservations_size != 0U &&
+           context->boot_reservation_descriptor_size == sizeof(DAWN_MEMORY_RANGE) &&
+           context->boot_reservation_descriptor_version == DAWN_MEMORY_RANGE_VERSION &&
+           context->boot_reservation_count != 0U &&
+           context->boot_reservations_size ==
+               (uint64_t)context->boot_reservation_count * context->boot_reservation_descriptor_size &&
            (context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_RGBX8888 ||
             context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_BGRX8888 ||
             context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_BGR888);

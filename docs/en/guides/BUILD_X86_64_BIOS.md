@@ -29,7 +29,7 @@ make check-bios
 
 ## Scope and safety
 
-This profile is currently validated only on QEMU's legacy BIOS emulation. It owns E820 collection and VBE mode choice while BIOS services remain available. The first MiB is conservatively normalized as reserved because it contains the active BIOS bootstrap, temporary Pulse staging data, and transition page tables. Physical legacy-BIOS hardware, alternate video modes, USB input, ACPI device discovery, and disk-filesystem loading are not yet supported claims. Do not write development images to physical media unless the target hardware and recovery procedure have been explicitly validated.
+This profile is currently validated only on QEMU's legacy BIOS emulation. It owns E820 collection and VBE mode choice while BIOS services remain available. Dawn Context v4 publishes the first MiB and the loaded Pulse image as explicit boot-owned reservations; Pulse then excludes every covered 4 KiB frame even when E820 reports it as usable. The first range contains the active BIOS bootstrap, temporary Pulse staging data, and transition page tables. Physical legacy-BIOS hardware, alternate video modes, USB input, ACPI device discovery, and disk-filesystem loading are not yet supported claims. Do not write development images to physical media unless the target hardware and recovery procedure have been explicitly validated.
 
 ## References
 
