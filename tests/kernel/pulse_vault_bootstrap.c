@@ -23,6 +23,7 @@ int main(void) {
     VAULTFS_JOURNAL_ENTRY journal_entry;
     VAULTFS_JOURNAL_ENTRY loaded_journal_entry;
     VAULTFS_RECOVERY_DECISION recovery_decision;
+    VAULTFS_ROOT_UPDATE_RECOVERY_STATE root_update_recovery_state;
     VAULTFS_ROOT_UPDATE_PLAN update_plan;
     VAULTFS_ROOT_UPDATE_PLAN invalid_update_plan;
     VAULTFS_DIRECTORY directory;
@@ -106,7 +107,11 @@ int main(void) {
                     "prepared journal authorizes alternate next root snapshot store") ||
         !expect(vaultfs_root_directory_block_load_dual(&device, &primary, &loaded_root_block) &&
                     loaded_root_block.generation == UINT64_C(7),
-                    "old superblock remains current after alternate snapshot store")) {
+                    "old superblock remains current after alternate snapshot store") ||
+        !expect(vaultfs_root_update_recovery_inspect(
+                    &device, UINT64_C(4), 0U, 1U, &root_update_recovery_state) &&
+                    root_update_recovery_state == VAULTFS_ROOT_UPDATE_RECOVERY_PREPARED,
+                    "read-only inspection identifies prepared next root snapshot")) {
         return 1;
     }
 
@@ -141,7 +146,10 @@ int main(void) {
                     vaultfs_root_update_journal_store_committed(&device, UINT64_C(4), &primary, &update_plan) &&
                     vaultfs_journal_load(&device, UINT64_C(4), &loaded_journal_entry) &&
                     loaded_journal_entry.state == VAULTFS_JOURNAL_COMMITTED &&
-                    !vaultfs_recovery_decide(&primary, &loaded_journal_entry, &root_block, &recovery_decision),
+                    !vaultfs_recovery_decide(&primary, &loaded_journal_entry, &root_block, &recovery_decision) &&
+                    vaultfs_root_update_recovery_inspect(
+                        &device, UINT64_C(4), 0U, 1U, &root_update_recovery_state) &&
+                    root_update_recovery_state == VAULTFS_ROOT_UPDATE_RECOVERY_COMMITTED_UNPROMOTED,
                     "commit requires matching persisted snapshot but does not promote old superblock")) {
         return 1;
     }
@@ -151,7 +159,10 @@ int main(void) {
                     "promotion rejects a superblock location overlapping a root snapshot") ||
         !expect(vaultfs_root_update_superblock_store(&device, UINT64_C(4), 0U, &primary, &update_plan) &&
                     vaultfs_superblock_load_latest(&device, 0U, 1U, &selected) &&
-                    selected.generation == UINT64_C(8) && selected.journal_sequence == UINT64_C(71),
+                    selected.generation == UINT64_C(8) && selected.journal_sequence == UINT64_C(71) &&
+                    vaultfs_root_update_recovery_inspect(
+                        &device, UINT64_C(4), 0U, 1U, &root_update_recovery_state) &&
+                    root_update_recovery_state == VAULTFS_ROOT_UPDATE_RECOVERY_COMMITTED_PROMOTED,
                     "first promoted redundant superblock exposes next root generation") ||
         !expect(vaultfs_root_update_superblock_store(&device, UINT64_C(4), 1U, &primary, &update_plan),
                     "second promoted redundant superblock stores independently") ||

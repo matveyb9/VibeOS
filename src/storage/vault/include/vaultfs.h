@@ -33,6 +33,12 @@ typedef enum {
     VAULTFS_RECOVERY_ACCEPT_COMMITTED = 2
 } VAULTFS_RECOVERY_DECISION;
 
+typedef enum {
+    VAULTFS_ROOT_UPDATE_RECOVERY_PREPARED = 1,
+    VAULTFS_ROOT_UPDATE_RECOVERY_COMMITTED_UNPROMOTED = 2,
+    VAULTFS_ROOT_UPDATE_RECOVERY_COMMITTED_PROMOTED = 3
+} VAULTFS_ROOT_UPDATE_RECOVERY_STATE;
+
 typedef struct {
     uint64_t magic;
     uint32_t format_version;
@@ -147,6 +153,12 @@ int vaultfs_root_update_superblock_store(
     uint64_t superblock_block,
     const VAULTFS_SUPERBLOCK *superblock,
     const VAULTFS_ROOT_UPDATE_PLAN *plan);
+int vaultfs_root_update_recovery_inspect(
+    const ATLAS_RAM_BLOCK_DEVICE *device,
+    uint64_t journal_block,
+    uint64_t primary_superblock_block,
+    uint64_t backup_superblock_block,
+    VAULTFS_ROOT_UPDATE_RECOVERY_STATE *state);
 int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot);
 int vaultfs_system_slot_confirm(VAULTFS_SUPERBLOCK *superblock);
 int vaultfs_system_slot_recover(const VAULTFS_SUPERBLOCK *superblock, uint64_t *boot_slot);

@@ -522,6 +522,54 @@ int vaultfs_root_update_superblock_store(
     return vaultfs_superblock_store(device, superblock_block, &successor);
 }
 
+int vaultfs_root_update_recovery_inspect(
+    const ATLAS_RAM_BLOCK_DEVICE *device,
+    uint64_t journal_block,
+    uint64_t primary_superblock_block,
+    uint64_t backup_superblock_block,
+    VAULTFS_ROOT_UPDATE_RECOVERY_STATE *state) {
+    VAULTFS_SUPERBLOCK superblock;
+    VAULTFS_JOURNAL_ENTRY journal;
+    VAULTFS_ROOT_DIRECTORY_BLOCK root_block;
+    uint8_t bytes[VAULTFS_ROOT_DIRECTORY_WIRE_BYTES];
+
+    if (state == (void *)0 || primary_superblock_block == backup_superblock_block ||
+        !vaultfs_superblock_load_latest(device, primary_superblock_block, backup_superblock_block, &superblock) ||
+        journal_block == superblock.root_directory_block ||
+        journal_block == superblock.backup_root_directory_block ||
+        !vaultfs_journal_load(device, journal_block, &journal) ||
+        journal.target_block != superblock.backup_root_directory_block ||
+        !atlas_block_read(device, journal.target_block, bytes, sizeof(bytes))) {
+        return 0;
+    }
+    vaultfs_root_directory_decode(&root_block, bytes);
+    if (!vaultfs_root_directory_block_valid(&root_block) ||
+        root_block.checksum != journal.payload_checksum) {
+        return 0;
+    }
+    if (journal.state == VAULTFS_JOURNAL_PREPARED) {
+        if (superblock.generation == UINT64_MAX ||
+            root_block.generation != superblock.generation + UINT64_C(1)) {
+            return 0;
+        }
+        *state = VAULTFS_ROOT_UPDATE_RECOVERY_PREPARED;
+        return 1;
+    }
+    if (journal.state != VAULTFS_JOURNAL_COMMITTED) {
+        return 0;
+    }
+    if (superblock.generation == root_block.generation) {
+        *state = VAULTFS_ROOT_UPDATE_RECOVERY_COMMITTED_PROMOTED;
+        return 1;
+    }
+    if (superblock.generation == UINT64_MAX ||
+        root_block.generation != superblock.generation + UINT64_C(1)) {
+        return 0;
+    }
+    *state = VAULTFS_ROOT_UPDATE_RECOVERY_COMMITTED_UNPROMOTED;
+    return 1;
+}
+
 int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot) {
     if (!vaultfs_superblock_valid(superblock) || !vaultfs_system_slot_valid(target_slot) ||
         target_slot == superblock->active_system_slot) {
