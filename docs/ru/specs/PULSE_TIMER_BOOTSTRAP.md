@@ -21,6 +21,8 @@ Intel System Programming Guide описывает доставку interrupts, �
 
 Теперь у Pulse есть и pure timer-source selection policy. Она сохраняет PIT как active source и может отметить APIC timer handoff eligible только когда готов отдельно проверенный APIC metadata plan. Это не является программированием local-APIC timer, настройкой vector, interrupt rerouting или изменением PIT/PIC probe.
 
+Связанный bounded capability inventory сообщает active legacy PIT availability и отдельный APIC-timer metadata eligibility flag. Это только observation record: он не выполняет timer calibration, не обращается к APIC timer register, не устанавливает APIC vector и не меняет scheduling policy.
+
 ## Источник
 
 [1] [Intel 64 and IA-32 Architectures Software Developer's Manual, Volume 3](https://cdrdv2-public.intel.com/774493/325384-sdm-vol-3abcd.pdf)

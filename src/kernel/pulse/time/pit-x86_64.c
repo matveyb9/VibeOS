@@ -42,6 +42,18 @@ int pulse_timer_source_select(
     return 1;
 }
 
+int pulse_timer_capabilities_describe(
+    const PULSE_TIMER_SOURCE_SELECTION *selection,
+    PULSE_TIMER_CAPABILITIES *capabilities) {
+    if (selection == (const void *)0 || capabilities == (void *)0 ||
+        selection->active_source != PULSE_TIMER_SOURCE_PIT) {
+        return 0;
+    }
+    capabilities->pit_legacy_available = 1U;
+    capabilities->apic_timer_metadata_eligible = selection->apic_timer_handoff_eligible != 0U;
+    return 1;
+}
+
 void pulse_timer_start_probe(void) {
     uint16_t divisor = pulse_timer_divisor_for_hz(PULSE_TIMER_PROBE_HZ);
 
