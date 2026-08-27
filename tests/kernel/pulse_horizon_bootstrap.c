@@ -24,13 +24,20 @@ int main(void) {
         DAWN_PIXEL_FORMAT_BGRX8888,
     };
     CANVAS_SCENE scene;
+    HORIZON_DESKTOP_STATE focus_state;
 
     if (!expect(!horizon_build_desktop_scene(319U, 480U, &scene), "too-narrow display is rejected") ||
         !expect(horizon_build_desktop_scene(640U, 480U, &scene), "desktop scene builds") ||
-        !expect(scene.rectangle_count == 6U && scene.label_count == 4U,
+        !expect(scene.rectangle_count == 7U && scene.label_count == 4U,
                     "desktop has retained regions and named labels") ||
         !expect(scene.rectangles[0].rgb_color == UINT32_C(0x101827), "first rectangle is desktop background") ||
-        !expect(scene.rectangles[5].rgb_color == UINT32_C(0x16a8a0), "last rectangle is accent dock") ||
+        !expect(scene.rectangles[2].rgb_color == UINT32_C(0xe6f1ff), "initial focus indicator precedes cards") ||
+        !expect(scene.rectangles[6].rgb_color == UINT32_C(0x16a8a0), "last rectangle is accent dock") ||
+        !expect(horizon_desktop_state_initialize(&focus_state, 3U) &&
+                    horizon_desktop_apply_action(&focus_state, HORIZON_DESKTOP_ACTION_FOCUS_NEXT) &&
+                    horizon_build_desktop_scene_for_state(640U, 480U, &focus_state, &scene) &&
+                    scene.rectangles[2].x == 233U && scene.rectangles[2].y == 86U,
+                "focus state positions the retained indicator at the focused card") ||
         !expect(horizon_render_desktop(&framebuffer), "desktop scene renders") ||
         !expect(pixels[0] == UINT32_C(0x0018314d), "header overlays desktop at top-left") ||
         !expect(pixels[(450U * 640U) + 100U] == UINT32_C(0x0016a8a0), "dock renders near lower desktop")) {
