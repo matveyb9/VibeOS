@@ -6,12 +6,12 @@
 
 **Статус:** Реализован как начальная retained desktop scene. Input, text, interactive window и application process пока не реализованы.
 
-Теперь Horizon композирует первый видимый desktop VibeOS из Canvas rectangle, а не показывает неструктурированный framebuffer test. Scene использует deep-blue workspace, верхнюю status band, три независимые window card и нижний accent dock. Это преднамеренная desktop-shell boundary: Horizon выбирает visual arrangement, Canvas хранит ordered primitive, а Prism записывает проверенный framebuffer.
+Теперь Horizon композирует первый видимый desktop VibeOS из Canvas rectangle и bitmap label, а не показывает неструктурированный framebuffer test. Scene использует deep-blue workspace, верхнюю status band, три независимые window card, нижний accent dock и видимые имена `VIBEOS`, `HORIZON`, `GUIDE`, `PROMPT`. Это преднамеренная desktop-shell boundary: Horizon выбирает visual arrangement, Canvas хранит ordered primitive, а Prism записывает проверенный framebuffer.
 
 | Элемент | Начальное поведение |
 |---|---|
 | Minimum target | 320 × 240 pixel |
-| Scene model | Шесть bounded retained rectangle |
+| Scene model | Шесть bounded retained rectangle и четыре label |
 | Workspace | Фон всего display |
 | Window card | Три staggered desktop region |
 | Dock | Нижняя accent band шириной три четверти display |

@@ -27,7 +27,8 @@ int main(void) {
 
     if (!expect(!horizon_build_desktop_scene(319U, 480U, &scene), "too-narrow display is rejected") ||
         !expect(horizon_build_desktop_scene(640U, 480U, &scene), "desktop scene builds") ||
-        !expect(scene.rectangle_count == 6U, "desktop has backdrop, header, three cards, and dock") ||
+        !expect(scene.rectangle_count == 6U && scene.label_count == 4U,
+                    "desktop has retained regions and named labels") ||
         !expect(scene.rectangles[0].rgb_color == UINT32_C(0x101827), "first rectangle is desktop background") ||
         !expect(scene.rectangles[5].rgb_color == UINT32_C(0x16a8a0), "last rectangle is accent dock") ||
         !expect(horizon_render_desktop(&framebuffer), "desktop scene renders") ||

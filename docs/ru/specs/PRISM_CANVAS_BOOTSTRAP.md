@@ -13,10 +13,10 @@ Prelude запрашивает firmware Graphics Output Protocol до выход
 | Prelude | Получить current GOP framebuffer information до `ExitBootServices()` |
 | Dawn Context v2 | Передать physical framebuffer descriptor без передачи live UEFI service |
 | Prism | Проверить framebuffer и software-fill clipped RGB rectangle |
-| Canvas | Хранить и рендерить bounded ordered rectangle scene |
+| Canvas | Хранить и рендерить bounded ordered rectangle и uppercase bitmap label |
 | Pulse probe | Нарисовать dark background и три overlapping visual block до timer verification |
 
-Host-тест проверяет descriptor handling, clipping, BGR pixel packing, draw order и retained-scene rendering. QEMU probe подтверждает выполнение software paint path до доставки external timer. Следующая работа отделит Prism в user space, создаст surface и window composition, добавит text и input, подключит display driver через Atlas и уберёт временный broad identity map.
+Host-тест проверяет descriptor handling, clipping, BGR pixel packing, draw order, uppercase bitmap label и retained-scene rendering. QEMU probe подтверждает выполнение software paint path до доставки external timer. Следующая работа отделит Prism в user space, создаст surface и window composition, добавит scalable text и input, подключит display driver через Atlas и уберёт временный broad identity map.
 
 ## Источник
 

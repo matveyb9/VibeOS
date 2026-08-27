@@ -42,7 +42,13 @@ int horizon_build_desktop_scene(uint32_t width, uint32_t height, CANVAS_SCENE *s
            horizon_add_rect(scene, left_margin + (2U * (card_width + gap)), header_height + gap, card_width, card_height,
                             UINT32_C(0x176a86)) &&
            horizon_add_rect(scene, width / 8U, height - dock_height - gap, (width * 3U) / 4U, dock_height,
-                            UINT32_C(0x16a8a0));
+                            UINT32_C(0x16a8a0)) &&
+           canvas_scene_add_label(scene, gap, gap / 2U, 2U, UINT32_C(0xe6f1ff), "VIBEOS") &&
+           canvas_scene_add_label(scene, left_margin + gap, header_height + (gap * 2U), 2U, UINT32_C(0xe6f1ff), "HORIZON") &&
+           canvas_scene_add_label(scene, left_margin + card_width + (gap * 2U), header_height + (gap * 3U), 2U,
+                                  UINT32_C(0xe6f1ff), "GUIDE") &&
+           canvas_scene_add_label(scene, left_margin + (2U * card_width) + (gap * 3U), header_height + (gap * 2U),
+                                  2U, UINT32_C(0xe6f1ff), "PROMPT");
 }
 
 int horizon_render_desktop(PRISM_FRAMEBUFFER *framebuffer) {

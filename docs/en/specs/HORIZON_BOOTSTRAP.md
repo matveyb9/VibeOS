@@ -6,12 +6,12 @@
 
 **Status:** Implemented as an initial retained desktop scene. Input, text, interactive windows, and application processes are not yet implemented.
 
-Horizon now composes the first visible VibeOS desktop from Canvas rectangles rather than presenting an unstructured framebuffer test. The scene uses a deep blue workspace, a top status band, three independent window cards, and a low accent dock. It is a deliberate desktop-shell boundary: Horizon selects visual arrangement, Canvas retains ordered primitives, and Prism writes the validated framebuffer.
+Horizon now composes the first visible VibeOS desktop from Canvas rectangles and bitmap labels rather than presenting an unstructured framebuffer test. The scene uses a deep blue workspace, a top status band, three independent window cards, a low accent dock, and the visible names `VIBEOS`, `HORIZON`, `GUIDE`, and `PROMPT`. It is a deliberate desktop-shell boundary: Horizon selects visual arrangement, Canvas retains ordered primitives, and Prism writes the validated framebuffer.
 
 | Element | Initial behavior |
 |---|---|
 | Minimum target | 320 × 240 pixels |
-| Scene model | Six bounded retained rectangles |
+| Scene model | Six bounded retained rectangles and four labels |
 | Workspace | Full display background |
 | Window cards | Three staggered desktop regions |
 | Dock | Lower three-quarter-width accent band |

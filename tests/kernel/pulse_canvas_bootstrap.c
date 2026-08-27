@@ -45,7 +45,11 @@ int main(void) {
                     "Canvas retains second rectangle") ||
         !expect(canvas_scene_render(&scene, &framebuffer), "Canvas renders retained scene") ||
         !expect(pixels[0] == UINT32_C(0x00ff0000) && pixels[1] == UINT32_C(0x00ff00),
-                    "Canvas preserves draw order and pixel conversion")) {
+                    "Canvas preserves draw order and pixel conversion") ||
+        !expect(canvas_scene_add_label(&scene, 1U, 0U, 1U, UINT32_C(0xffffff), "V"),
+                    "Canvas retains label") ||
+        !expect(canvas_scene_render(&scene, &framebuffer) && pixels[1] == UINT32_C(0xffffff),
+                    "Canvas renders bitmap label")) {
         return 1;
     }
 
