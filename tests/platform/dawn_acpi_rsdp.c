@@ -78,8 +78,14 @@ static void make_madt(uint8_t *table) {
     write_u32_le(&table[40], 1U);
     table[44] = 0U;
     table[45] = 8U;
+    table[46] = 7U;
+    table[47] = 1U;
+    write_u32_le(&table[48], 1U);
     table[52] = 1U;
     table[53] = 12U;
+    table[54] = 2U;
+    write_u32_le(&table[56], UINT32_C(0xfec00000));
+    write_u32_le(&table[60], 32U);
     apply_checksum(table, 64U, 9U);
 }
 
@@ -108,6 +114,7 @@ int main(void) {
     DAWN_ACPI_ROOT_TABLE_METADATA metadata;
     DAWN_ACPI_CHILD_TABLE_INVENTORY inventory;
     DAWN_ACPI_MADT_INVENTORY madt_inventory;
+    DAWN_ACPI_MADT_X86_INVENTORY madt_x86_inventory;
     static const uint8_t xsdt_signature[4] = {'X', 'S', 'D', 'T'};
     static const uint8_t rsdt_signature[4] = {'R', 'S', 'D', 'T'};
     static const uint8_t mcfg_signature[4] = {'M', 'C', 'F', 'G'};
@@ -190,6 +197,18 @@ int main(void) {
                     madt_inventory.entries[0].type == 0U && madt_inventory.entries[0].length == 8U &&
                     madt_inventory.entries[1].type == 1U && madt_inventory.entries[1].length == 12U,
                     "MADT retains only fixed metadata and bounded entry headers")) {
+        return 1;
+    }
+    if (!expect(dawn_acpi_madt_x86_inventory(&madt_inventory, identity_reader, (void *)0, &madt_x86_inventory),
+                    "x86 MADT records are decoded") ||
+        !expect(madt_x86_inventory.local_apic_count == 1U && madt_x86_inventory.io_apic_count == 1U &&
+                    madt_x86_inventory.local_apics[0].acpi_processor_id == 7U &&
+                    madt_x86_inventory.local_apics[0].local_apic_id == 1U &&
+                    madt_x86_inventory.local_apics[0].flags == 1U &&
+                    madt_x86_inventory.io_apics[0].io_apic_id == 2U &&
+                    madt_x86_inventory.io_apics[0].io_apic_physical_address == UINT32_C(0xfec00000) &&
+                    madt_x86_inventory.io_apics[0].global_system_interrupt_base == 32U,
+                    "x86 decoder retains Local APIC and I/O APIC metadata only")) {
         return 1;
     }
     child_madt[53] = 0U;

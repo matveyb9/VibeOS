@@ -62,6 +62,7 @@ static int pulse_acpi_child_table_inventory_probe(const DAWN_CONTEXT *context) {
     DAWN_ACPI_ROOT_TABLE_METADATA root_table;
     DAWN_ACPI_CHILD_TABLE_INVENTORY inventory;
     DAWN_ACPI_MADT_INVENTORY madt;
+    DAWN_ACPI_MADT_X86_INVENTORY madt_x86;
     uint32_t index;
 
     if (context == (void *)0 ||
@@ -74,7 +75,8 @@ static int pulse_acpi_child_table_inventory_probe(const DAWN_CONTEXT *context) {
             inventory.entries[index].signature[2] == 'I' && inventory.entries[index].signature[3] == 'C' &&
             (inventory.entries[index].status & DAWN_ACPI_CHILD_TABLE_CHECKSUM_VALID) != 0U) {
             return dawn_acpi_madt_inventory(
-                inventory.entries[index].physical_address, pulse_acpi_read_lower_4g, (void *)0, &madt);
+                       inventory.entries[index].physical_address, pulse_acpi_read_lower_4g, (void *)0, &madt) &&
+                   dawn_acpi_madt_x86_inventory(&madt, pulse_acpi_read_lower_4g, (void *)0, &madt_x86);
         }
     }
     return 0;
@@ -138,6 +140,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         pulse_debug_write("DAWN: ACPI root table metadata verified\n");
         pulse_debug_write("DAWN: ACPI child table inventory verified\n");
         pulse_debug_write("DAWN: ACPI MADT metadata inventory verified\n");
+        pulse_debug_write("DAWN: ACPI x86 APIC metadata inventory verified\n");
         pulse_scheduler_initialize();
         if (!pulse_scheduler_create_ready_task(&first_task) ||
             !pulse_scheduler_create_ready_task(&second_task) ||

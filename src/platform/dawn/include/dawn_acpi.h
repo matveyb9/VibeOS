@@ -15,6 +15,7 @@
 #define DAWN_ACPI_CHILD_TABLE_CAPACITY UINT32_C(64)
 #define DAWN_ACPI_MADT_FIXED_LENGTH UINT32_C(44)
 #define DAWN_ACPI_MADT_ENTRY_CAPACITY UINT32_C(64)
+#define DAWN_ACPI_MADT_X86_RECORD_CAPACITY DAWN_ACPI_MADT_ENTRY_CAPACITY
 
 #define DAWN_ACPI_CHILD_TABLE_HEADER_VALID UINT8_C(0x01)
 #define DAWN_ACPI_CHILD_TABLE_CHECKSUM_VALID UINT8_C(0x02)
@@ -65,6 +66,27 @@ typedef struct {
     uint32_t omitted_entry_count;
 } DAWN_ACPI_MADT_INVENTORY;
 
+typedef struct {
+    uint8_t acpi_processor_id;
+    uint8_t local_apic_id;
+    uint32_t flags;
+} DAWN_ACPI_MADT_LOCAL_APIC_METADATA;
+
+typedef struct {
+    uint8_t io_apic_id;
+    uint32_t io_apic_physical_address;
+    uint32_t global_system_interrupt_base;
+} DAWN_ACPI_MADT_IO_APIC_METADATA;
+
+typedef struct {
+    DAWN_ACPI_MADT_LOCAL_APIC_METADATA local_apics[DAWN_ACPI_MADT_X86_RECORD_CAPACITY];
+    DAWN_ACPI_MADT_IO_APIC_METADATA io_apics[DAWN_ACPI_MADT_X86_RECORD_CAPACITY];
+    uint32_t local_apic_count;
+    uint32_t io_apic_count;
+    uint32_t omitted_local_apic_count;
+    uint32_t omitted_io_apic_count;
+} DAWN_ACPI_MADT_X86_INVENTORY;
+
 int dawn_acpi_rsdp_is_valid(const void *physical_rsdp);
 int dawn_acpi_root_table_describe(const void *physical_rsdp, DAWN_ACPI_ROOT_TABLE_METADATA *metadata);
 int dawn_acpi_child_table_inventory(
@@ -77,5 +99,10 @@ int dawn_acpi_madt_inventory(
     DAWN_ACPI_PHYSICAL_READER reader,
     void *reader_context,
     DAWN_ACPI_MADT_INVENTORY *inventory);
+int dawn_acpi_madt_x86_inventory(
+    const DAWN_ACPI_MADT_INVENTORY *madt,
+    DAWN_ACPI_PHYSICAL_READER reader,
+    void *reader_context,
+    DAWN_ACPI_MADT_X86_INVENTORY *inventory);
 
 #endif

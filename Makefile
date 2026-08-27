@@ -18,6 +18,7 @@ PULSE_INTERRUPTS_ENTRY_OBJ := $(BUILD_DIR)/pulse/interrupts/x86_64.obj
 PULSE_CONTEXT_ENTRY_OBJ := $(BUILD_DIR)/pulse/schedule/context-x86_64.obj
 PULSE_MAIN_OBJ := $(BUILD_DIR)/pulse/main.obj
 PULSE_DAWN_ACPI_OBJ := $(BUILD_DIR)/pulse/dawn/acpi-rsdp.obj
+PULSE_DAWN_MADT_X86_OBJ := $(BUILD_DIR)/pulse/dawn/acpi-madt-x86.obj
 PULSE_MEMORY_OBJ := $(BUILD_DIR)/pulse/memory/early.obj
 PULSE_PAGING_OBJ := $(BUILD_DIR)/pulse/memory/paging-x86_64.obj
 PULSE_INTERRUPTS_OBJ := $(BUILD_DIR)/pulse/interrupts/idt-x86_64.obj
@@ -122,6 +123,10 @@ $(PULSE_MAIN_OBJ): $(PULSE_DIR)/main.c src/platform/dawn/include/dawn.h src/plat
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
 $(PULSE_DAWN_ACPI_OBJ): src/platform/dawn/acpi-rsdp.c src/platform/dawn/include/dawn_acpi.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
+$(PULSE_DAWN_MADT_X86_OBJ): src/platform/dawn/acpi-madt-x86.c src/platform/dawn/include/dawn_acpi.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
@@ -237,10 +242,10 @@ $(PULSE_PANIC_OBJ): $(PULSE_DIR)/debug/panic.c $(PULSE_DIR)/include/panic.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
-$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_DAWN_ACPI_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_ATLAS_PCI_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_HORIZON_CATALOG_OBJ) $(PULSE_HORIZON_FOCUS_OBJ) $(PULSE_HORIZON_INPUT_OBJ) $(PULSE_HORIZON_RUNTIME_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
+$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_DAWN_ACPI_OBJ) $(PULSE_DAWN_MADT_X86_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_ATLAS_PCI_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_HORIZON_CATALOG_OBJ) $(PULSE_HORIZON_FOCUS_OBJ) $(PULSE_HORIZON_INPUT_OBJ) $(PULSE_HORIZON_RUNTIME_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
 	@mkdir -p $(dir $@)
 	$(LLD_LD) -m elf_x86_64 -nostdlib --build-id=none -T $(PULSE_DIR)/linker/x86_64.ld \
-		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_DAWN_ACPI_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_ATLAS_PCI_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_HORIZON_CATALOG_OBJ) $(PULSE_HORIZON_FOCUS_OBJ) $(PULSE_HORIZON_INPUT_OBJ) $(PULSE_HORIZON_RUNTIME_OBJ) $(PULSE_PANIC_OBJ)
+		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_DAWN_ACPI_OBJ) $(PULSE_DAWN_MADT_X86_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_ATLAS_PCI_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_HORIZON_CATALOG_OBJ) $(PULSE_HORIZON_FOCUS_OBJ) $(PULSE_HORIZON_INPUT_OBJ) $(PULSE_HORIZON_RUNTIME_OBJ) $(PULSE_PANIC_OBJ)
 
 $(PULSE_BIN): $(PULSE_ELF)
 	$(LLVM_OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $< $@
@@ -330,10 +335,10 @@ $(PULSE_PCI_TEST): tests/kernel/pulse_pci_bootstrap.c src/drivers/atlas/pci-inve
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/drivers/atlas/include \
 	tests/kernel/pulse_pci_bootstrap.c src/drivers/atlas/pci-inventory.c -o $@
 
-$(DAWN_ACPI_TEST): tests/platform/dawn_acpi_rsdp.c src/platform/dawn/acpi-rsdp.c src/platform/dawn/include/dawn_acpi.h
+$(DAWN_ACPI_TEST): tests/platform/dawn_acpi_rsdp.c src/platform/dawn/acpi-rsdp.c src/platform/dawn/acpi-madt-x86.c src/platform/dawn/include/dawn_acpi.h
 	@mkdir -p $(dir $@)
 	$(HOST_CC) -std=c17 -no-pie -Wall -Wextra -Wpedantic -Werror -Isrc/platform/dawn/include \
-		tests/platform/dawn_acpi_rsdp.c src/platform/dawn/acpi-rsdp.c -o $@
+	tests/platform/dawn_acpi_rsdp.c src/platform/dawn/acpi-rsdp.c src/platform/dawn/acpi-madt-x86.c -o $@
 
 $(PRELUDE_OBJ): $(PRELUDE_DIR)/main.c $(PRELUDE_DIR)/include/uefi.h src/platform/dawn/include/dawn.h src/platform/dawn/include/dawn_acpi.h
 	@mkdir -p $(dir $@)
@@ -380,14 +385,14 @@ $(BIOS_IMAGE): $(BIOS_STAGE1_BIN) $(BIOS_STAGE2_BIN) $(PULSE_BIN)
 	dd if=$(PULSE_BIN) of=$@ bs=512 seek=$$((1 + $(PRELUDE_BIOS_STAGE2_SECTORS))) conv=notrunc
 
 check-uefi: $(ESP_IMAGE)
-	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PARCEL: native launch admission verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: keyboard event queue verified" "ATLAS: PCI inventory verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "DAWN: ACPI child table inventory verified" "DAWN: ACPI MADT metadata inventory verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
+	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PARCEL: native launch admission verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: keyboard event queue verified" "ATLAS: PCI inventory verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "DAWN: ACPI child table inventory verified" "DAWN: ACPI MADT metadata inventory verified" "DAWN: ACPI x86 APIC metadata inventory verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
 
 check-keyboard:
 	$(MAKE) BUILD_DIR=build-keyboard PULSE_PROBE=keyboard uefi-image
 	tools/check-keyboard.sh build-keyboard/vibeos-uefi-esp.img "ATLAS: keyboard irq probe ready" "HORIZON: keyboard focus redrawn" "PARCEL: native launch request formed" "HORIZON: keyboard selection redrawn"
 
 check-bios: $(BIOS_IMAGE)
-	tools/check-bios.sh $(BIOS_IMAGE) "PRELUDE BIOS: Dawn Context sealed" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "DAWN: ACPI child table inventory verified" "DAWN: ACPI MADT metadata inventory verified" "PULSE: timer interrupt handled"
+	tools/check-bios.sh $(BIOS_IMAGE) "PRELUDE BIOS: Dawn Context sealed" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "DAWN: ACPI child table inventory verified" "DAWN: ACPI MADT metadata inventory verified" "DAWN: ACPI x86 APIC metadata inventory verified" "PULSE: timer interrupt handled"
 
 check-panic: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE) "PULSE PANIC: unhandled interrupt"
