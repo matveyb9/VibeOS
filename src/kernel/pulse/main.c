@@ -39,6 +39,8 @@ static void pulse_debug_exit(void) {
 }
 
 static int pulse_context_is_valid(const DAWN_CONTEXT *context) {
+    DAWN_ACPI_ROOT_TABLE_METADATA root_table;
+
     return context != (void *)0 && context->magic == DAWN_CONTEXT_MAGIC &&
            context->version == DAWN_CONTEXT_VERSION && context->size >= sizeof(DAWN_CONTEXT) &&
            context->memory_map_physical_address != 0 && context->memory_map_size != 0 &&
@@ -55,6 +57,7 @@ static int pulse_context_is_valid(const DAWN_CONTEXT *context) {
                (uint64_t)context->boot_reservation_count * context->boot_reservation_descriptor_size &&
            context->acpi_rsdp_physical_address != 0U &&
            dawn_acpi_rsdp_is_valid((const void *)(uintptr_t)context->acpi_rsdp_physical_address) &&
+           dawn_acpi_root_table_describe((const void *)(uintptr_t)context->acpi_rsdp_physical_address, &root_table) &&
            (context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_RGBX8888 ||
             context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_BGRX8888 ||
             context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_BGR888);
@@ -85,6 +88,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         pulse_debug_write("ATLAS: PCI inventory verified\n");
         pulse_debug_write("ATLAS: PCI resource inventory verified\n");
         pulse_debug_write("DAWN: ACPI RSDP handoff verified\n");
+        pulse_debug_write("DAWN: ACPI root table metadata verified\n");
         pulse_scheduler_initialize();
         if (!pulse_scheduler_create_ready_task(&first_task) ||
             !pulse_scheduler_create_ready_task(&second_task) ||

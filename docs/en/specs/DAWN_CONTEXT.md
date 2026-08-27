@@ -43,7 +43,9 @@ The UEFI producer obtains its map through `GetMemoryMap`, converts UEFI conventi
 
 Prelude discovers the RSDP before final firmware exit. UEFI Prelude searches EFI configuration tables, preferring the ACPI 2.0-or-later GUID and then falling back to the ACPI 1.0 GUID. Legacy BIOS Prelude scans 16-byte boundaries in the first KiB of EBDA followed by `0xe0000`–`0xfffff`, exactly as specified for IA-PC discovery.[1] Both paths validate the `RSD PTR ` signature and ACPI checksum; revision 2 or later requires the 36-byte extended RSDP checksum. The current x86_64 bootstrap requires the resulting address to fit the identity-mapped lower 4 GiB, then transfers that physical address through the same Dawn shape.
 
-> This milestone **does not** parse RSDT/XSDT or any other ACPI table. It does not evaluate AML, enable ACPI, configure power states, assign PCI resources, program interrupt routing, or provide a real-hardware compatibility claim.
+Pulse selects a nonzero XSDT pointer from a revision-2-or-later RSDP, otherwise its RSDT pointer. It validates only that selected root table’s expected signature, 36-byte minimum header, bounded total length, entry-width divisibility, and whole-table checksum, then extracts its physical address, byte length, kind, and entry count as transient metadata.[1] It never follows an entry from the root table during this milestone.
+
+> This milestone **does not** parse the entries of RSDT/XSDT or any other ACPI table. It does not evaluate AML, enable ACPI, enumerate CPUs or interrupts, configure power states, assign PCI resources, program interrupt routing, or provide a real-hardware compatibility claim.
 
 ## Contract rules
 

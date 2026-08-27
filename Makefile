@@ -294,7 +294,7 @@ $(PULSE_PCI_TEST): tests/kernel/pulse_pci_bootstrap.c src/drivers/atlas/pci-inve
 
 $(DAWN_ACPI_TEST): tests/platform/dawn_acpi_rsdp.c src/platform/dawn/acpi-rsdp.c src/platform/dawn/include/dawn_acpi.h
 	@mkdir -p $(dir $@)
-	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/platform/dawn/include \
+	$(HOST_CC) -std=c17 -no-pie -Wall -Wextra -Wpedantic -Werror -Isrc/platform/dawn/include \
 		tests/platform/dawn_acpi_rsdp.c src/platform/dawn/acpi-rsdp.c -o $@
 
 $(PRELUDE_OBJ): $(PRELUDE_DIR)/main.c $(PRELUDE_DIR)/include/uefi.h src/platform/dawn/include/dawn.h src/platform/dawn/include/dawn_acpi.h
@@ -342,14 +342,14 @@ $(BIOS_IMAGE): $(BIOS_STAGE1_BIN) $(BIOS_STAGE2_BIN) $(PULSE_BIN)
 	dd if=$(PULSE_BIN) of=$@ bs=512 seek=$$((1 + $(PRELUDE_BIOS_STAGE2_SECTORS))) conv=notrunc
 
 check-uefi: $(ESP_IMAGE)
-	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "ATLAS: keyboard event queue verified" "ATLAS: PCI inventory verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
+	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "ATLAS: keyboard event queue verified" "ATLAS: PCI inventory verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
 
 check-keyboard:
 	$(MAKE) BUILD_DIR=build-keyboard PULSE_PROBE=keyboard uefi-image
 	tools/check-keyboard.sh build-keyboard/vibeos-uefi-esp.img "ATLAS: keyboard irq probe ready" "ATLAS: keyboard IRQ1 event handled"
 
 check-bios: $(BIOS_IMAGE)
-	tools/check-bios.sh $(BIOS_IMAGE) "PRELUDE BIOS: Dawn Context sealed" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "PULSE: timer interrupt handled"
+	tools/check-bios.sh $(BIOS_IMAGE) "PRELUDE BIOS: Dawn Context sealed" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "PULSE: timer interrupt handled"
 
 check-panic: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE) "PULSE PANIC: unhandled interrupt"
