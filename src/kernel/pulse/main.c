@@ -83,6 +83,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         pulse_debug_write("HORIZON: desktop scene rendered\n");
         pulse_debug_write("ATLAS: keyboard event queue verified\n");
         pulse_debug_write("ATLAS: PCI inventory verified\n");
+        pulse_debug_write("ATLAS: PCI resource inventory verified\n");
         pulse_debug_write("DAWN: ACPI RSDP handoff verified\n");
         pulse_scheduler_initialize();
         if (!pulse_scheduler_create_ready_task(&first_task) ||
