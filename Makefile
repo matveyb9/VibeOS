@@ -27,6 +27,7 @@ PULSE_RELAY_CHANNEL_OBJ := $(BUILD_DIR)/ipc/relay/channel.obj
 PULSE_ORIGIN_OBJ := $(BUILD_DIR)/runtime/origin/origin.obj
 PULSE_ORIGIN_ABI_OBJ := $(BUILD_DIR)/runtime/origin/abi.obj
 PULSE_ATLAS_RAM_OBJ := $(BUILD_DIR)/drivers/atlas/ram-block.obj
+PULSE_ATLAS_KEYBOARD_OBJ := $(BUILD_DIR)/drivers/atlas/i8042-keyboard.obj
 PULSE_VAULT_OBJ := $(BUILD_DIR)/storage/vault/vaultfs.obj
 PULSE_SESSION_OBJ := $(BUILD_DIR)/services/session/boot-mode.obj
 PULSE_PARCEL_OBJ := $(BUILD_DIR)/services/parcel/parcel.obj
@@ -49,6 +50,7 @@ PULSE_SESSION_TEST := $(BUILD_DIR)/tests/pulse-session-bootstrap
 PULSE_PARCEL_TEST := $(BUILD_DIR)/tests/pulse-parcel-bootstrap
 PULSE_CANVAS_TEST := $(BUILD_DIR)/tests/pulse-canvas-bootstrap
 PULSE_HORIZON_TEST := $(BUILD_DIR)/tests/pulse-horizon-bootstrap
+PULSE_KEYBOARD_TEST := $(BUILD_DIR)/tests/pulse-keyboard-bootstrap
 ESP_IMAGE := $(BUILD_DIR)/vibeos-uefi-esp.img
 ESP_IMAGE_BYTES := 67108864
 
@@ -144,6 +146,10 @@ $(PULSE_ATLAS_RAM_OBJ): src/drivers/atlas/ram-block.c src/drivers/atlas/include/
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
+$(PULSE_ATLAS_KEYBOARD_OBJ): src/drivers/atlas/i8042-keyboard.c src/drivers/atlas/include/atlas_input.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
 $(PULSE_VAULT_OBJ): src/storage/vault/vaultfs.c src/storage/vault/include/vaultfs.h src/drivers/atlas/include/atlas_block.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
@@ -176,10 +182,10 @@ $(PULSE_PANIC_OBJ): $(PULSE_DIR)/debug/panic.c $(PULSE_DIR)/include/panic.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
-$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
+$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
 	@mkdir -p $(dir $@)
 	$(LLD_LD) -m elf_x86_64 -nostdlib --build-id=none -T $(PULSE_DIR)/linker/x86_64.ld \
-		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_PANIC_OBJ)
+		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_PANIC_OBJ)
 
 $(PULSE_BIN): $(PULSE_ELF)
 	$(LLVM_OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $< $@
@@ -244,6 +250,11 @@ $(PULSE_HORIZON_TEST): tests/kernel/pulse_horizon_bootstrap.c src/ui/prism/frame
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/platform/dawn/include -Isrc/ui/prism/include -Isrc/ui/canvas/include -Isrc/apps/horizon/include \
 		tests/kernel/pulse_horizon_bootstrap.c src/ui/prism/framebuffer.c src/ui/canvas/scene.c src/apps/horizon/shell.c -o $@
 
+$(PULSE_KEYBOARD_TEST): tests/kernel/pulse_keyboard_bootstrap.c src/drivers/atlas/i8042-keyboard.c
+	@mkdir -p $(dir $@)
+	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/drivers/atlas/include \
+		tests/kernel/pulse_keyboard_bootstrap.c src/drivers/atlas/i8042-keyboard.c -o $@
+
 $(PRELUDE_OBJ): $(PRELUDE_DIR)/main.c $(PRELUDE_DIR)/include/uefi.h src/platform/dawn/include/dawn.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PRELUDE_CFLAGS) -c $< -o $@
@@ -266,12 +277,12 @@ $(ESP_IMAGE): $(PRELUDE_EFI)
 	mcopy -i $@ $(PRELUDE_EFI) ::/EFI/BOOT/BOOTX64.EFI
 
 check-uefi: $(ESP_IMAGE)
-	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "PULSE: task context verified" "PULSE: timer interrupt handled"
+	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "ATLAS: keyboard event queue verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
 
 check-panic: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE) "PULSE PANIC: unhandled interrupt"
 
-test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TEST) $(PULSE_SCHEDULER_TEST) $(PULSE_CONTEXT_TEST) $(PULSE_TIMER_TEST) $(PULSE_RELAY_TEST) $(PULSE_VAULT_TEST) $(PULSE_SESSION_TEST) $(PULSE_PARCEL_TEST) $(PULSE_CANVAS_TEST) $(PULSE_HORIZON_TEST)
+test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TEST) $(PULSE_SCHEDULER_TEST) $(PULSE_CONTEXT_TEST) $(PULSE_TIMER_TEST) $(PULSE_RELAY_TEST) $(PULSE_VAULT_TEST) $(PULSE_SESSION_TEST) $(PULSE_PARCEL_TEST) $(PULSE_CANVAS_TEST) $(PULSE_HORIZON_TEST) $(PULSE_KEYBOARD_TEST)
 	$(PULSE_MEMORY_TEST)
 	$(PULSE_PAGING_TEST)
 	$(PULSE_INTERRUPTS_TEST)
@@ -284,6 +295,7 @@ test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TE
 	$(PULSE_PARCEL_TEST)
 	$(PULSE_CANVAS_TEST)
 	$(PULSE_HORIZON_TEST)
+	$(PULSE_KEYBOARD_TEST)
 	$(MAKE) BUILD_DIR=build-panic PULSE_PROBE=panic check-panic
 	tests/boot/check-prelude-artifact.sh $(ESP_IMAGE) $(PRELUDE_EFI) $(PULSE_ELF)
 

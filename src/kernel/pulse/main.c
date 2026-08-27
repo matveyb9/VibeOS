@@ -17,6 +17,7 @@
 #include <session_mode.h>
 #include <parcel.h>
 #include <prism.h>
+#include <atlas_input.h>
 
 int prism_canvas_runtime_probe(const DAWN_CONTEXT *context);
 
@@ -58,7 +59,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         pulse_memory_take_frame(&first_frame) && pulse_memory_take_frame(&second_frame) &&
         second_frame == first_frame + 4096U && pulse_paging_initialize() &&
         pulse_interrupts_initialize() && prism_canvas_runtime_probe(context) && origin_runtime_probe() && vaultfs_runtime_probe() &&
-        vibe_session_runtime_probe() && parcel_runtime_probe()) {
+        vibe_session_runtime_probe() && parcel_runtime_probe() && atlas_keyboard_runtime_probe()) {
         pulse_debug_write("ORIGIN: delegated key verified\n");
         pulse_debug_write("VAULT: redundant superblock recovered\n");
         pulse_debug_write("VAULT: journal commit verified\n");
@@ -68,6 +69,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         pulse_debug_write("PRISM: framebuffer painted\n");
         pulse_debug_write("CANVAS: retained scene rendered\n");
         pulse_debug_write("HORIZON: desktop scene rendered\n");
+        pulse_debug_write("ATLAS: keyboard event queue verified\n");
         pulse_scheduler_initialize();
         if (!pulse_scheduler_create_ready_task(&first_task) ||
             !pulse_scheduler_create_ready_task(&second_task) ||
