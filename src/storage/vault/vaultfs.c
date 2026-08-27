@@ -67,8 +67,94 @@ static uint32_t vaultfs_journal_checksum(const VAULTFS_JOURNAL_ENTRY *entry) {
     return vaultfs_crc32(entry, sizeof(VAULTFS_JOURNAL_ENTRY) - sizeof(entry->checksum));
 }
 
+static void vaultfs_write_u32_le(uint8_t *bytes, uint32_t value) {
+    bytes[0] = (uint8_t)value;
+    bytes[1] = (uint8_t)(value >> 8U);
+    bytes[2] = (uint8_t)(value >> 16U);
+    bytes[3] = (uint8_t)(value >> 24U);
+}
+
+static void vaultfs_write_u64_le(uint8_t *bytes, uint64_t value) {
+    uint32_t index;
+
+    for (index = 0U; index < 8U; ++index) {
+        bytes[index] = (uint8_t)(value >> (index * 8U));
+    }
+}
+
+static uint32_t vaultfs_read_u32_le(const uint8_t *bytes) {
+    return (uint32_t)((uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
+                      ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U));
+}
+
+static uint64_t vaultfs_read_u64_le(const uint8_t *bytes) {
+    uint64_t value = 0U;
+    uint32_t index;
+
+    for (index = 0U; index < 8U; ++index) {
+        value |= ((uint64_t)bytes[index]) << (index * 8U);
+    }
+    return value;
+}
+
+static void vaultfs_root_directory_encode(const VAULTFS_ROOT_DIRECTORY_BLOCK *root_block, uint8_t *bytes) {
+    uint32_t index;
+    uint32_t byte_index;
+
+    for (index = 0U; index < VAULTFS_ROOT_DIRECTORY_WIRE_BYTES; ++index) {
+        bytes[index] = 0U;
+    }
+    vaultfs_write_u64_le(&bytes[0], root_block->magic);
+    vaultfs_write_u32_le(&bytes[8], root_block->format_version);
+    vaultfs_write_u32_le(&bytes[12], root_block->entry_count);
+    vaultfs_write_u64_le(&bytes[16], root_block->generation);
+    for (index = 0U; index < VAULTFS_DIRECTORY_CAPACITY; ++index) {
+        uint8_t *entry_bytes = &bytes[24U + index * 60U];
+        const VAULTFS_DIRECTORY_ENTRY *entry = &root_block->entries[index];
+
+        vaultfs_write_u64_le(&entry_bytes[0], entry->object_id);
+        vaultfs_write_u64_le(&entry_bytes[8], entry->first_block);
+        vaultfs_write_u64_le(&entry_bytes[16], entry->byte_count);
+        vaultfs_write_u32_le(&entry_bytes[24], entry->kind);
+        for (byte_index = 0U; byte_index < VAULTFS_ENTRY_NAME_BYTES; ++byte_index) {
+            entry_bytes[28U + byte_index] = (uint8_t)entry->name[byte_index];
+        }
+    }
+    vaultfs_write_u32_le(&bytes[984], root_block->checksum);
+}
+
+static void vaultfs_root_directory_decode(VAULTFS_ROOT_DIRECTORY_BLOCK *root_block, const uint8_t *bytes) {
+    uint8_t *root_bytes = (uint8_t *)root_block;
+    uint32_t index;
+    uint32_t byte_index;
+
+    for (index = 0U; index < sizeof(*root_block); ++index) {
+        root_bytes[index] = 0U;
+    }
+    root_block->magic = vaultfs_read_u64_le(&bytes[0]);
+    root_block->format_version = vaultfs_read_u32_le(&bytes[8]);
+    root_block->entry_count = vaultfs_read_u32_le(&bytes[12]);
+    root_block->generation = vaultfs_read_u64_le(&bytes[16]);
+    for (index = 0U; index < VAULTFS_DIRECTORY_CAPACITY; ++index) {
+        const uint8_t *entry_bytes = &bytes[24U + index * 60U];
+        VAULTFS_DIRECTORY_ENTRY *entry = &root_block->entries[index];
+
+        entry->object_id = vaultfs_read_u64_le(&entry_bytes[0]);
+        entry->first_block = vaultfs_read_u64_le(&entry_bytes[8]);
+        entry->byte_count = vaultfs_read_u64_le(&entry_bytes[16]);
+        entry->kind = vaultfs_read_u32_le(&entry_bytes[24]);
+        for (byte_index = 0U; byte_index < VAULTFS_ENTRY_NAME_BYTES; ++byte_index) {
+            entry->name[byte_index] = (char)entry_bytes[28U + byte_index];
+        }
+    }
+    root_block->checksum = vaultfs_read_u32_le(&bytes[984]);
+}
+
 static uint32_t vaultfs_root_directory_checksum(const VAULTFS_ROOT_DIRECTORY_BLOCK *root_block) {
-    return vaultfs_crc32(root_block, sizeof(VAULTFS_ROOT_DIRECTORY_BLOCK) - sizeof(root_block->checksum));
+    uint8_t bytes[VAULTFS_ROOT_DIRECTORY_WIRE_BYTES];
+
+    vaultfs_root_directory_encode(root_block, bytes);
+    return vaultfs_crc32(bytes, VAULTFS_ROOT_DIRECTORY_WIRE_BYTES - sizeof(root_block->checksum));
 }
 
 static void vaultfs_copy(VAULTFS_SUPERBLOCK *destination, const VAULTFS_SUPERBLOCK *source) {
@@ -312,20 +398,26 @@ int vaultfs_root_directory_block_store(
     ATLAS_RAM_BLOCK_DEVICE *device,
     const VAULTFS_SUPERBLOCK *superblock,
     const VAULTFS_ROOT_DIRECTORY_BLOCK *root_block) {
+    uint8_t bytes[VAULTFS_ROOT_DIRECTORY_WIRE_BYTES];
+
     if (!vaultfs_superblock_valid(superblock) || !vaultfs_root_directory_block_valid(root_block)) {
         return 0;
     }
-    return atlas_block_write(device, superblock->root_directory_block, root_block, sizeof(*root_block));
+    vaultfs_root_directory_encode(root_block, bytes);
+    return atlas_block_write(device, superblock->root_directory_block, bytes, sizeof(bytes));
 }
 
 int vaultfs_root_directory_block_load(
     const ATLAS_RAM_BLOCK_DEVICE *device,
     const VAULTFS_SUPERBLOCK *superblock,
     VAULTFS_ROOT_DIRECTORY_BLOCK *root_block) {
+    uint8_t bytes[VAULTFS_ROOT_DIRECTORY_WIRE_BYTES];
+
     if (!vaultfs_superblock_valid(superblock) || root_block == (void *)0 ||
-        !atlas_block_read(device, superblock->root_directory_block, root_block, sizeof(*root_block))) {
+        !atlas_block_read(device, superblock->root_directory_block, bytes, sizeof(bytes))) {
         return 0;
     }
+    vaultfs_root_directory_decode(root_block, bytes);
     return vaultfs_root_directory_block_valid(root_block) && root_block->generation == superblock->generation;
 }
 

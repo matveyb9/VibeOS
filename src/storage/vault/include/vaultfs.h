@@ -12,6 +12,7 @@
 #define VAULTFS_ROOT_DIRECTORY_BLOCK_NONE UINT64_MAX
 #define VAULTFS_ROOT_DIRECTORY_MAGIC UINT64_C(0x5641554c54524431)
 #define VAULTFS_ROOT_DIRECTORY_VERSION UINT32_C(1)
+#define VAULTFS_ROOT_DIRECTORY_WIRE_BYTES UINT32_C(988)
 #define VAULTFS_DIRECTORY_CAPACITY UINT32_C(16)
 #define VAULTFS_ENTRY_NAME_BYTES UINT32_C(32)
 
@@ -46,7 +47,7 @@ typedef struct __attribute__((packed)) {
     uint32_t checksum;
 } VAULTFS_JOURNAL_ENTRY;
 
-typedef struct __attribute__((packed)) {
+typedef struct {
     uint64_t object_id;
     uint64_t first_block;
     uint64_t byte_count;
@@ -59,7 +60,7 @@ typedef struct {
     uint32_t count;
 } VAULTFS_DIRECTORY;
 
-typedef struct __attribute__((packed)) {
+typedef struct {
     uint64_t magic;
     uint32_t format_version;
     uint32_t entry_count;
