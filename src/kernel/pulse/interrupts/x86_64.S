@@ -1,11 +1,17 @@
 /* VibeOS Pulse — minimal no-return early exception handlers for QEMU proof. */
 	.section .text.interrupts,"ax"
+	.extern pulse_panic_unhandled_interrupt
 	.global pulse_x86_default_interrupt
 	.type pulse_x86_default_interrupt,@function
 pulse_x86_default_interrupt:
 	cli
-	leaq pulse_x86_default_message(%rip), %rsi
-	jmp pulse_x86_debug_exit
+	andq $-16, %rsp
+	subq $8, %rsp
+	movl $0xffffffff, %edi
+	call pulse_panic_unhandled_interrupt
+1:
+	hlt
+	jmp 1b
 
 	.global pulse_x86_breakpoint_interrupt
 	.type pulse_x86_breakpoint_interrupt,@function
@@ -31,7 +37,5 @@ pulse_x86_debug_exit:
 	jmp 3b
 
 	.section .rodata,"a"
-pulse_x86_default_message:
-	.asciz "PULSE: unexpected interrupt\n"
 pulse_x86_breakpoint_message:
 	.asciz "PULSE: breakpoint trap handled\n"

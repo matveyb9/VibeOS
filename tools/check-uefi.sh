@@ -2,12 +2,13 @@
 # VibeOS Project Foundation — portable automated QEMU verification for Prelude UEFI.
 set -euo pipefail
 
-if [[ $# -ne 1 ]]; then
-    echo "usage: $0 <esp-image>" >&2
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+    echo "usage: $0 <esp-image> [expected-marker]" >&2
     exit 64
 fi
 
 esp_image=$1
+expected_marker=${2:-"PULSE: breakpoint trap handled"}
 build_dir=$(dirname "$esp_image")
 qemu_x86_64=${QEMU_X86_64:-qemu-system-x86_64}
 ovmf_code=${OVMF_CODE:-/usr/share/OVMF/OVMF_CODE_4M.fd}
@@ -50,7 +51,7 @@ set +e
 qemu_status=$?
 set -e
 
-if ! grep -Fqx "PULSE: breakpoint trap handled" "$debug_log"; then
+if ! grep -Fqx "$expected_marker" "$debug_log"; then
     echo "Prelude UEFI verification marker was not observed." >&2
     [[ -f "$debug_log" ]] && cat "$debug_log" >&2
     exit 1

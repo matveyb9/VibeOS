@@ -53,8 +53,13 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
             pulse_debug_write("PULSE: early scheduler bootstrap failed\n");
             pulse_debug_exit();
         }
+#if defined(PULSE_PROBE_panic)
+        __asm__ volatile("ud2");
+        pulse_debug_write("PULSE: invalid opcode unexpectedly returned\n");
+#else
         pulse_interrupts_trigger_breakpoint();
         pulse_debug_write("PULSE: breakpoint dispatch unexpectedly returned\n");
+#endif
     } else {
         pulse_debug_write("PULSE: early interrupt bootstrap failed\n");
     }

@@ -3,7 +3,8 @@
 
 SHELL := /bin/bash
 
-BUILD_DIR := build
+BUILD_DIR ?= build
+PULSE_PROBE ?= breakpoint
 PRELUDE_DIR := src/boot/prelude
 PULSE_DIR := src/kernel/pulse
 
@@ -17,6 +18,7 @@ PULSE_MEMORY_OBJ := $(BUILD_DIR)/pulse/memory/early.obj
 PULSE_PAGING_OBJ := $(BUILD_DIR)/pulse/memory/paging-x86_64.obj
 PULSE_INTERRUPTS_OBJ := $(BUILD_DIR)/pulse/interrupts/idt-x86_64.obj
 PULSE_SCHEDULER_OBJ := $(BUILD_DIR)/pulse/schedule/round-robin.obj
+PULSE_PANIC_OBJ := $(BUILD_DIR)/pulse/debug/panic.obj
 PULSE_ELF := $(BUILD_DIR)/pulse/PULSE.ELF
 PULSE_BIN := $(BUILD_DIR)/pulse/pulse.bin
 PULSE_MEMORY_TEST := $(BUILD_DIR)/tests/pulse-memory-bootstrap
@@ -37,10 +39,10 @@ PRELUDE_CFLAGS := --target=x86_64-pc-windows-msvc -std=c17 -ffreestanding -fshor
 	-I$(PRELUDE_DIR)/include -Isrc/platform/dawn/include
 PULSE_CFLAGS := --target=x86_64-unknown-elf -std=c17 -ffreestanding -fno-stack-protector \
 	-fno-pic -fno-pie -mno-red-zone -Wall -Wextra -Wpedantic -Werror \
-	-Isrc/platform/dawn/include -I$(PULSE_DIR)/include
+	-DPULSE_PROBE_$(PULSE_PROBE) -Isrc/platform/dawn/include -I$(PULSE_DIR)/include
 PULSE_ASFLAGS := --target=x86_64-unknown-elf -ffreestanding -mno-red-zone
 
-.PHONY: all prelude pulse uefi-image check-uefi test clean
+.PHONY: all prelude pulse uefi-image check-uefi check-panic test test-panic clean
 
 all: uefi-image
 
@@ -78,10 +80,14 @@ $(PULSE_SCHEDULER_OBJ): $(PULSE_DIR)/schedule/round-robin.c $(PULSE_DIR)/include
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
-$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_DIR)/linker/x86_64.ld
+$(PULSE_PANIC_OBJ): $(PULSE_DIR)/debug/panic.c $(PULSE_DIR)/include/panic.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
+$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
 	@mkdir -p $(dir $@)
 	$(LLD_LD) -m elf_x86_64 -nostdlib --build-id=none -T $(PULSE_DIR)/linker/x86_64.ld \
-		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ)
+		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_PANIC_OBJ)
 
 $(PULSE_BIN): $(PULSE_ELF)
 	$(LLVM_OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $< $@
@@ -112,7 +118,7 @@ $(PRELUDE_OBJ): $(PRELUDE_DIR)/main.c $(PRELUDE_DIR)/include/uefi.h src/platform
 
 $(PRELUDE_BLOB_OBJ): $(PRELUDE_DIR)/embedded-pulse.S $(PULSE_BIN)
 	@mkdir -p $(dir $@)
-	$(CLANG) --target=x86_64-pc-windows-msvc -c $< -o $@
+	$(CLANG) --target=x86_64-pc-windows-msvc '-DPRELUDE_PULSE_BINARY="$(PULSE_BIN)"' -c $< -o $@
 
 $(PRELUDE_EFI): $(PRELUDE_OBJ) $(PRELUDE_BLOB_OBJ)
 	@mkdir -p $(dir $@)
@@ -128,13 +134,20 @@ $(ESP_IMAGE): $(PRELUDE_EFI)
 	mcopy -i $@ $(PRELUDE_EFI) ::/EFI/BOOT/BOOTX64.EFI
 
 check-uefi: $(ESP_IMAGE)
-	tools/check-uefi.sh $(ESP_IMAGE)
+	tools/check-uefi.sh $(ESP_IMAGE) "PULSE: breakpoint trap handled"
+
+check-panic: $(ESP_IMAGE)
+	tools/check-uefi.sh $(ESP_IMAGE) "PULSE PANIC: unhandled interrupt"
 
 test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TEST) $(PULSE_SCHEDULER_TEST)
 	$(PULSE_MEMORY_TEST)
 	$(PULSE_PAGING_TEST)
 	$(PULSE_INTERRUPTS_TEST)
 	$(PULSE_SCHEDULER_TEST)
+	$(MAKE) BUILD_DIR=build-panic PULSE_PROBE=panic check-panic
+
+test-panic:
+	$(MAKE) BUILD_DIR=build-panic PULSE_PROBE=panic check-panic
 	tests/boot/check-prelude-artifact.sh $(ESP_IMAGE) $(PRELUDE_EFI) $(PULSE_ELF)
 
 clean:
