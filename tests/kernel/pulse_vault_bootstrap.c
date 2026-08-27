@@ -26,6 +26,7 @@ int main(void) {
     VAULTFS_ROOT_DIRECTORY_BLOCK loaded_root_block;
     VAULTFS_DIRECTORY_ENTRY entry = {
         UINT64_C(17), UINT64_C(2), UINT64_C(128), VAULTFS_ENTRY_FILE, "readme.txt"};
+    uint8_t superblock_wire[VAULTFS_SUPERBLOCK_WIRE_BYTES];
     uint64_t boot_slot;
 
     if (!expect(!atlas_ram_block_device_init(&device, storage, ATLAS_BLOCK_BYTES - 1U),
@@ -57,6 +58,11 @@ int main(void) {
     if (!expect(vaultfs_superblock_valid(&primary) && primary.root_directory_block == UINT64_C(2),
                     "primary stores sealed root-directory block metadata") ||
         !expect(vaultfs_superblock_store(&device, 0U, &primary), "primary stores") ||
+        !expect(atlas_block_read(&device, 0U, superblock_wire, sizeof(superblock_wire)) &&
+                    superblock_wire[0] == 0x31U && superblock_wire[1] == 0x53U &&
+                    superblock_wire[8] == VAULTFS_FORMAT_VERSION && superblock_wire[12] == 0U &&
+                    superblock_wire[40] == 2U,
+                    "primary uses canonical little-endian superblock wire bytes") ||
         !expect(vaultfs_superblock_store(&device, 1U, &backup), "backup stores") ||
         !expect(vaultfs_root_directory_block_valid(&root_block), "root directory block checksum validates") ||
         !expect(vaultfs_root_directory_block_store(&device, &backup, &root_block), "root directory block stores") ||

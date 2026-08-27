@@ -7,6 +7,7 @@
 
 #define VAULTFS_SUPERBLOCK_MAGIC UINT64_C(0x5641554c54465331)
 #define VAULTFS_FORMAT_VERSION UINT32_C(2)
+#define VAULTFS_SUPERBLOCK_WIRE_BYTES UINT32_C(60)
 #define VAULTFS_JOURNAL_MAGIC UINT64_C(0x5641554c544a4e31)
 #define VAULTFS_SYSTEM_SLOT_NONE UINT64_MAX
 #define VAULTFS_ROOT_DIRECTORY_BLOCK_NONE UINT64_MAX
@@ -26,7 +27,7 @@ typedef enum {
     VAULTFS_ENTRY_DIRECTORY = 2
 } VAULTFS_ENTRY_KIND;
 
-typedef struct __attribute__((packed)) {
+typedef struct {
     uint64_t magic;
     uint32_t format_version;
     uint32_t block_bytes;

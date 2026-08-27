@@ -17,8 +17,13 @@ uint32_t vaultfs_crc32(const void *data, uint64_t byte_count) {
     return ~value;
 }
 
+static void vaultfs_superblock_encode(const VAULTFS_SUPERBLOCK *superblock, uint8_t *bytes);
+
 static uint32_t vaultfs_superblock_checksum(const VAULTFS_SUPERBLOCK *superblock) {
-    return vaultfs_crc32(superblock, sizeof(VAULTFS_SUPERBLOCK) - sizeof(superblock->checksum));
+    uint8_t bytes[VAULTFS_SUPERBLOCK_WIRE_BYTES];
+
+    vaultfs_superblock_encode(superblock, bytes);
+    return vaultfs_crc32(bytes, VAULTFS_SUPERBLOCK_WIRE_BYTES - sizeof(superblock->checksum));
 }
 
 static void vaultfs_superblock_seal(VAULTFS_SUPERBLOCK *superblock) {
@@ -95,6 +100,41 @@ static uint64_t vaultfs_read_u64_le(const uint8_t *bytes) {
         value |= ((uint64_t)bytes[index]) << (index * 8U);
     }
     return value;
+}
+
+static void vaultfs_superblock_encode(const VAULTFS_SUPERBLOCK *superblock, uint8_t *bytes) {
+    uint32_t index;
+
+    for (index = 0U; index < VAULTFS_SUPERBLOCK_WIRE_BYTES; ++index) {
+        bytes[index] = 0U;
+    }
+    vaultfs_write_u64_le(&bytes[0], superblock->magic);
+    vaultfs_write_u32_le(&bytes[8], superblock->format_version);
+    vaultfs_write_u32_le(&bytes[12], superblock->block_bytes);
+    vaultfs_write_u64_le(&bytes[16], superblock->generation);
+    vaultfs_write_u64_le(&bytes[24], superblock->active_system_slot);
+    vaultfs_write_u64_le(&bytes[32], superblock->pending_system_slot);
+    vaultfs_write_u64_le(&bytes[40], superblock->root_directory_block);
+    vaultfs_write_u64_le(&bytes[48], superblock->journal_sequence);
+    vaultfs_write_u32_le(&bytes[56], superblock->checksum);
+}
+
+static void vaultfs_superblock_decode(VAULTFS_SUPERBLOCK *superblock, const uint8_t *bytes) {
+    uint8_t *superblock_bytes = (uint8_t *)superblock;
+    uint32_t index;
+
+    for (index = 0U; index < sizeof(*superblock); ++index) {
+        superblock_bytes[index] = 0U;
+    }
+    superblock->magic = vaultfs_read_u64_le(&bytes[0]);
+    superblock->format_version = vaultfs_read_u32_le(&bytes[8]);
+    superblock->block_bytes = vaultfs_read_u32_le(&bytes[12]);
+    superblock->generation = vaultfs_read_u64_le(&bytes[16]);
+    superblock->active_system_slot = vaultfs_read_u64_le(&bytes[24]);
+    superblock->pending_system_slot = vaultfs_read_u64_le(&bytes[32]);
+    superblock->root_directory_block = vaultfs_read_u64_le(&bytes[40]);
+    superblock->journal_sequence = vaultfs_read_u64_le(&bytes[48]);
+    superblock->checksum = vaultfs_read_u32_le(&bytes[56]);
 }
 
 static void vaultfs_root_directory_encode(const VAULTFS_ROOT_DIRECTORY_BLOCK *root_block, uint8_t *bytes) {
@@ -200,10 +240,13 @@ int vaultfs_superblock_store(
     ATLAS_RAM_BLOCK_DEVICE *device,
     uint64_t block_index,
     const VAULTFS_SUPERBLOCK *superblock) {
+    uint8_t bytes[VAULTFS_SUPERBLOCK_WIRE_BYTES];
+
     if (!vaultfs_superblock_valid(superblock)) {
         return 0;
     }
-    return atlas_block_write(device, block_index, superblock, sizeof(VAULTFS_SUPERBLOCK));
+    vaultfs_superblock_encode(superblock, bytes);
+    return atlas_block_write(device, block_index, bytes, sizeof(bytes));
 }
 
 int vaultfs_superblock_load_latest(
@@ -211,16 +254,20 @@ int vaultfs_superblock_load_latest(
     uint64_t primary_block,
     uint64_t backup_block,
     VAULTFS_SUPERBLOCK *superblock) {
+    uint8_t primary_bytes[VAULTFS_SUPERBLOCK_WIRE_BYTES];
+    uint8_t backup_bytes[VAULTFS_SUPERBLOCK_WIRE_BYTES];
     VAULTFS_SUPERBLOCK primary;
     VAULTFS_SUPERBLOCK backup;
     int primary_valid;
     int backup_valid;
 
     if (superblock == (void *)0 ||
-        !atlas_block_read(device, primary_block, &primary, sizeof(primary)) ||
-        !atlas_block_read(device, backup_block, &backup, sizeof(backup))) {
+        !atlas_block_read(device, primary_block, primary_bytes, sizeof(primary_bytes)) ||
+        !atlas_block_read(device, backup_block, backup_bytes, sizeof(backup_bytes))) {
         return 0;
     }
+    vaultfs_superblock_decode(&primary, primary_bytes);
+    vaultfs_superblock_decode(&backup, backup_bytes);
 
     primary_valid = vaultfs_superblock_valid(&primary);
     backup_valid = vaultfs_superblock_valid(&backup);
