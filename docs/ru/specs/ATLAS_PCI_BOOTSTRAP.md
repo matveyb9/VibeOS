@@ -13,10 +13,11 @@ Atlas отделяет transport-зависимое чтение configuration �
 | Inventory | До 32 найденных function в fixed caller-owned buffer |
 | Function | Function zero каждого root-bus device; function 1–7 только при multi-function header flag |
 | Поля | Bus/device/function, vendor/device ID, class, subclass, programming interface, revision и header type |
+| Topology | Bounded breadth-first scan bus zero и уже пронумерованных secondary bus PCI-to-PCI bridge; visited map на 256 byte предотвращает повторные циклы |
 | I/O | x86_64-only `CF8/CFC` read transport, изолированный C17 callback |
 | Проверка | Детерминированный host fake-config test и runtime marker UEFI/OVMF, Legacy BIOS/SeaBIOS |
 
-Bootstrap выполняет **только inventory**. Он не перечисляет устройства за PCI bridge, не разбирает ACPI/MCFG, не настраивает BAR, не включает decoding или bus mastering, не настраивает DMA, MSI/MSI-X либо INTx и не привязывает driver. Эти функции требуют будущей Atlas resource model и platform policy; их отсутствие на этом шаге намеренно.
+Bootstrap выполняет **только read-only inventory**. Он следует за Type-1 PCI-to-PCI bridge лишь когда firmware уже предоставляет ненулевой secondary bus number; он никогда не назначает, не изменяет и не исправляет нумерацию bus. Он не разбирает ACPI/MCFG, не настраивает BAR, не включает decoding или bus mastering, не настраивает DMA, MSI/MSI-X либо INTx и не привязывает driver. Эти функции требуют будущей Atlas resource model и platform policy; их отсутствие на этом шаге намеренно.
 
 ## Источники
 

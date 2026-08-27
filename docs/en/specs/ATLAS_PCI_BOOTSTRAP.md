@@ -13,10 +13,11 @@ Atlas separates a transport-specific configuration read from a neutral inventory
 | Inventory | Up to 32 discovered functions in a fixed caller-owned buffer |
 | Functions | Function zero of every root-bus device; functions 1–7 only when the multi-function header flag is present |
 | Fields | Bus/device/function, vendor/device ID, class, subclass, programming interface, revision, and header type |
+| Topology | Bounded breadth-first scan of bus zero and already numbered PCI-to-PCI bridge secondary buses; a 256-byte visited map prevents re-entry cycles |
 | I/O | x86_64-only `CF8/CFC` read transport, isolated behind a C17 callback |
 | Verification | Deterministic host fake-config test plus UEFI/OVMF and Legacy BIOS/SeaBIOS runtime markers |
 
-The bootstrap performs **inventory only**. It does not enumerate behind PCI bridges, parse ACPI/MCFG, configure BARs, enable decoding or bus mastering, configure DMA, MSI/MSI-X or INTx, or bind drivers. Those functions require a later Atlas resource model and platform policy; absence from this step is intentional.
+The bootstrap performs **read-only inventory only**. It follows a Type-1 PCI-to-PCI bridge only when firmware has already provided a nonzero secondary bus number; it never assigns, changes, or repairs bus numbering. It does not parse ACPI/MCFG, configure BARs, enable decoding or bus mastering, configure DMA, MSI/MSI-X or INTx, or bind drivers. Those functions require a later Atlas resource model and platform policy; absence from this step is intentional.
 
 ## References
 

@@ -26,6 +26,12 @@ int atlas_pci_inventory_scan(
     ATLAS_PCI_FUNCTION *functions,
     uint32_t capacity,
     uint32_t *function_count);
+int atlas_pci_inventory_scan_topology(
+    ATLAS_PCI_READ32 read32,
+    void *context,
+    ATLAS_PCI_FUNCTION *functions,
+    uint32_t capacity,
+    uint32_t *function_count);
 int atlas_pci_runtime_probe(void);
 
 #endif
