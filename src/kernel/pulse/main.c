@@ -16,6 +16,9 @@
 #include <vaultfs.h>
 #include <session_mode.h>
 #include <parcel.h>
+#include <prism.h>
+
+int prism_canvas_runtime_probe(const DAWN_CONTEXT *context);
 
 static void pulse_debug_putc(char character) {
     __asm__ volatile("outb %0, %w1" : : "a"(character), "d"((uint16_t)0x402));
@@ -37,7 +40,11 @@ static int pulse_context_is_valid(const DAWN_CONTEXT *context) {
            context->version == DAWN_CONTEXT_VERSION && context->size >= sizeof(DAWN_CONTEXT) &&
            context->memory_map_physical_address != 0 && context->memory_map_size != 0 &&
            context->memory_descriptor_size >= 40U && context->kernel_stack_top != 0 &&
-           context->kernel_stack_size >= 4096U;
+           context->kernel_stack_size >= 4096U && context->framebuffer_physical_address != 0U &&
+           context->framebuffer_byte_size != 0U && context->framebuffer_width != 0U &&
+           context->framebuffer_height != 0U && context->framebuffer_pixels_per_scan_line >= context->framebuffer_width &&
+           (context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_RGBX8888 ||
+            context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_BGRX8888);
 }
 
 __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
@@ -50,7 +57,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
     if (pulse_context_is_valid(context) && pulse_memory_initialize(context) &&
         pulse_memory_take_frame(&first_frame) && pulse_memory_take_frame(&second_frame) &&
         second_frame == first_frame + 4096U && pulse_paging_initialize() &&
-        pulse_interrupts_initialize() && origin_runtime_probe() && vaultfs_runtime_probe() &&
+        pulse_interrupts_initialize() && prism_canvas_runtime_probe(context) && origin_runtime_probe() && vaultfs_runtime_probe() &&
         vibe_session_runtime_probe() && parcel_runtime_probe()) {
         pulse_debug_write("ORIGIN: delegated key verified\n");
         pulse_debug_write("VAULT: redundant superblock recovered\n");
@@ -58,6 +65,8 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         pulse_debug_write("VAULT: A/B slot state verified\n");
         pulse_debug_write("SESSION: launch policy verified\n");
         pulse_debug_write("PARCEL: signed manifest policy verified\n");
+        pulse_debug_write("PRISM: framebuffer painted\n");
+        pulse_debug_write("CANVAS: retained scene rendered\n");
         pulse_scheduler_initialize();
         if (!pulse_scheduler_create_ready_task(&first_task) ||
             !pulse_scheduler_create_ready_task(&second_task) ||

@@ -2,11 +2,11 @@
   <a href="../../en/specs/DAWN_CONTEXT.md">🇺🇸 ENGLISH</a> &nbsp;|&nbsp; <strong>🇷🇺 РУССКИЙ</strong>
 </p>
 
-# Dawn Context v1
+# Dawn Context v2
 
-**Статус:** Реализован в Prelude и проверяется первой точкой входа Pulse для x86_64.
+**Статус:** Реализован в Prelude и проверен начальной точкой входа Pulse x86_64.
 
-`Dawn Context` — компактный версионированный boot-контракт, через который Prelude передаёт состояние платформы Pulse. Версия 1 содержит только UEFI memory map. Она намеренно не передаёт Pulse действующие UEFI Boot Services.
+`Dawn Context` — компактный версионированный boot-контракт, через который Prelude передаёт состояние платформы Pulse. Версия 2 содержит UEFI memory map, descriptor раннего kernel stack и descriptor framebuffer Graphics Output Protocol, выбранного firmware. Она намеренно не передаёт Pulse действующие UEFI Boot Services.
 
 UEFI Boot Services доступны только до успешного вызова `ExitBootServices()`; после этого перехода OS loader принимает управление платформой.[1] Prelude получает memory map через `GetMemoryMap()`, который предоставляет описание ресурсов памяти, передаваемое OS loader дальше.[2]
 
@@ -15,16 +15,21 @@ UEFI Boot Services доступны только до успешного выз�
 | Поле | Тип | Назначение |
 |---|---|---|
 | `magic` | `UINT64` | `DAWN_CONTEXT_MAGIC`, идентификатор бинарного контракта. |
-| `version` | `UINT32` | Версия контракта, изначально `1`. |
+| `version` | `UINT32` | Текущая версия контракта: `2`. |
 | `size` | `UINT32` | Полный размер структуры на стороне producer. |
 | `memory_map_physical_address` | `uint64_t` | Физический адрес UEFI memory descriptors, сохранённых для Pulse. |
 | `memory_map_size` | `uint64_t` | Занятый размер сохранённой карты в байтах. |
 | `memory_map_key` | `UINTN` | Ключ, с которым Boot Services были успешно закрыты. |
 | `memory_descriptor_size` | `UINTN` | Шаг между дескрипторами. |
 | `memory_descriptor_version` | `UINT32` | Версия UEFI-дескрипторов. |
-| `reserved` | `UINT32` | В v1 содержит ноль. |
+| `reserved` | `UINT32` | Нуль в v2. |
 | `kernel_stack_top` | `uint64_t` | Физический адрес вершины начального стека Pulse. |
 | `kernel_stack_size` | `uint64_t` | Размер начального стека в байтах. |
+| `framebuffer_physical_address` | `uint64_t` | Physical base GOP framebuffer. |
+| `framebuffer_byte_size` | `uint64_t` | Допустимый byte size GOP framebuffer. |
+| `framebuffer_width` / `framebuffer_height` | `uint32_t` | Current visible pixel dimension. |
+| `framebuffer_pixels_per_scan_line` | `uint32_t` | Physical scan-line stride в pixel. |
+| `framebuffer_pixel_format` | `uint32_t` | Framebuffer format v2: `RGBX8888` или `BGRX8888`. |
 
 ## Правила producer
 
@@ -34,7 +39,7 @@ UEFI Boot Services доступны только до успешного выз�
 
 ## Текущая граница handoff
 
-Этот этап запечатывает контекст, загружает первый нативный образ Pulse по физическому адресу `0x00200000` и подтверждает прямой переход в QEMU. Prelude выделяет отдельный стек Pulse размером 128 КиБ. Pulse проверяет контракт, выбирает EFI conventional-memory region и выделяет два bootstrap frame по 4 КиБ; paging, interrupts и task scheduling остаются следующими этапами Pulse.
+Этот этап запечатывает context, загружает первый нативный образ Pulse по физическому адресу `0x00200000` и подтверждает прямой переход в QEMU. Prelude выделяет отдельный stack Pulse размером 128 КиБ и захватывает active GOP framebuffer до получения final memory map. Pulse валидирует contract, запускает ранний software framebuffer path, выбирает EFI conventional memory, строит собственные page table и начинает interrupt bootstrap.
 
 ## Источники
 

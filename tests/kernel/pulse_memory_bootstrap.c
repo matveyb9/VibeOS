@@ -40,6 +40,12 @@ int main(void) {
         0U,
         0U,
         0U,
+        0U,
+        0U,
+        0U,
+        0U,
+        0U,
+        0U,
     };
     const PULSE_MEMORY_STATE *state;
     uint64_t frame_one;

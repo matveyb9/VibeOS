@@ -27,6 +27,9 @@ static CHAR16 prelude_banner[] = {
 
 static DAWN_CONTEXT dawn_context;
 
+static EFI_GUID prelude_graphics_output_protocol_guid = {
+    UINT32_C(0x9042a9de), 0x23dc, 0x4a38, {0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a}};
+
 static void prelude_copy_bytes(void *destination, const void *source, UINTN size) {
     uint8_t *output = destination;
     const uint8_t *input = source;
@@ -74,6 +77,45 @@ static EFI_STATUS prelude_capture_dawn_context(EFI_SYSTEM_TABLE *system_table) {
     dawn_context.memory_descriptor_size = (uint64_t)descriptor_size;
     dawn_context.memory_descriptor_version = descriptor_version;
     dawn_context.reserved = 0;
+    return EFI_SUCCESS;
+}
+
+static EFI_STATUS prelude_capture_framebuffer(EFI_SYSTEM_TABLE *system_table) {
+    EFI_GRAPHICS_OUTPUT_PROTOCOL *graphics_output = (void *)0;
+    EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode;
+    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *information;
+    EFI_STATUS status;
+
+    if (system_table->console_out_handle == (void *)0 ||
+        system_table->boot_services->handle_protocol == (void *)0) {
+        return EFI_UNSUPPORTED;
+    }
+    status = system_table->boot_services->handle_protocol(
+        system_table->console_out_handle, &prelude_graphics_output_protocol_guid, (void **)&graphics_output);
+    if (status != EFI_SUCCESS || graphics_output == (void *)0 || graphics_output->mode == (void *)0 ||
+        graphics_output->mode->info == (void *)0) {
+        return status != EFI_SUCCESS ? status : EFI_UNSUPPORTED;
+    }
+
+    mode = graphics_output->mode;
+    information = mode->info;
+    if (mode->frame_buffer_base == 0U || mode->frame_buffer_size == 0U ||
+        information->horizontal_resolution == 0U || information->vertical_resolution == 0U ||
+        information->pixels_per_scan_line < information->horizontal_resolution) {
+        return EFI_UNSUPPORTED;
+    }
+    if (information->pixel_format == EFI_PIXEL_RGB_RESERVED_8_BIT_PER_COLOR) {
+        dawn_context.framebuffer_pixel_format = DAWN_PIXEL_FORMAT_RGBX8888;
+    } else if (information->pixel_format == EFI_PIXEL_BGR_RESERVED_8_BIT_PER_COLOR) {
+        dawn_context.framebuffer_pixel_format = DAWN_PIXEL_FORMAT_BGRX8888;
+    } else {
+        return EFI_UNSUPPORTED;
+    }
+    dawn_context.framebuffer_physical_address = mode->frame_buffer_base;
+    dawn_context.framebuffer_byte_size = mode->frame_buffer_size;
+    dawn_context.framebuffer_width = information->horizontal_resolution;
+    dawn_context.framebuffer_height = information->vertical_resolution;
+    dawn_context.framebuffer_pixels_per_scan_line = information->pixels_per_scan_line;
     return EFI_SUCCESS;
 }
 
@@ -144,6 +186,7 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
         system_table->boot_services->allocate_pages == (void *)0 ||
         system_table->boot_services->get_memory_map == (void *)0 ||
         system_table->boot_services->allocate_pool == (void *)0 ||
+        system_table->boot_services->handle_protocol == (void *)0 ||
         system_table->boot_services->exit_boot_services == (void *)0) {
         return EFI_INVALID_PARAMETER;
     }
@@ -158,6 +201,11 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
     }
 
     status = prelude_prepare_pulse_stack(system_table);
+    if (status != EFI_SUCCESS) {
+        return status;
+    }
+
+    status = prelude_capture_framebuffer(system_table);
     if (status != EFI_SUCCESS) {
         return status;
     }

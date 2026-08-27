@@ -2,11 +2,11 @@
   <strong>🇺🇸 ENGLISH</strong> &nbsp;|&nbsp; <a href="../../ru/specs/DAWN_CONTEXT.md">🇷🇺 РУССКИЙ</a>
 </p>
 
-# Dawn Context v1
+# Dawn Context v2
 
-**Status:** Implemented in Prelude and validated by the first x86_64 Pulse entry.
+**Status:** Implemented in Prelude and validated by the initial x86_64 Pulse entry.
 
-`Dawn Context` is the compact, versioned boot contract through which Prelude transfers platform state to Pulse. Version 1 contains only the UEFI memory map. It deliberately does not expose live UEFI Boot Services to Pulse.
+`Dawn Context` is the compact, versioned boot contract through which Prelude transfers platform state to Pulse. Version 2 contains the UEFI memory map, an early kernel stack descriptor, and the firmware-selected Graphics Output Protocol framebuffer descriptor. It deliberately does not expose live UEFI Boot Services to Pulse.
 
 UEFI Boot Services remain available only before a successful `ExitBootServices()` call; after that transition, the OS loader has assumed platform control.[1] Prelude obtains the memory map through `GetMemoryMap()`, which supplies the memory-resource description that an OS loader must convey onward.[2]
 
@@ -15,16 +15,21 @@ UEFI Boot Services remain available only before a successful `ExitBootServices()
 | Field | Type | Meaning |
 |---|---|---|
 | `magic` | `UINT64` | `DAWN_CONTEXT_MAGIC`, identifying the binary contract. |
-| `version` | `UINT32` | Contract version, initially `1`. |
+| `version` | `UINT32` | Contract version, currently `2`. |
 | `size` | `UINT32` | Full size of the producer's structure. |
 | `memory_map_physical_address` | `uint64_t` | Physical address of UEFI memory descriptors retained for Pulse. |
 | `memory_map_size` | `uint64_t` | Used byte count in the retained map. |
 | `memory_map_key` | `UINTN` | Key that successfully sealed Boot Services. |
 | `memory_descriptor_size` | `UINTN` | Stride between descriptors. |
 | `memory_descriptor_version` | `UINT32` | UEFI descriptor version. |
-| `reserved` | `UINT32` | Zero in v1. |
+| `reserved` | `UINT32` | Zero in v2. |
 | `kernel_stack_top` | `uint64_t` | Initial stack-top physical address for Pulse. |
 | `kernel_stack_size` | `uint64_t` | Initial stack allocation size in bytes. |
+| `framebuffer_physical_address` | `uint64_t` | GOP framebuffer physical base. |
+| `framebuffer_byte_size` | `uint64_t` | Usable byte size of the GOP framebuffer. |
+| `framebuffer_width` / `framebuffer_height` | `uint32_t` | Current visible pixel dimensions. |
+| `framebuffer_pixels_per_scan_line` | `uint32_t` | Physical scan-line stride in pixels. |
+| `framebuffer_pixel_format` | `uint32_t` | `RGBX8888` or `BGRX8888` v2 framebuffer format. |
 
 ## Producer rules
 
@@ -34,7 +39,7 @@ The structure is **append-only**. A future Pulse build must reject an unknown `m
 
 ## Current handoff boundary
 
-This milestone seals the context, loads the first native Pulse image at physical address `0x00200000`, and proves the direct transition in QEMU. Prelude allocates a separate 128 KiB stack for Pulse. Pulse validates the contract, selects an EFI conventional-memory region and allocates two 4 KiB bootstrap frames; paging, interrupts, and task scheduling remain later Pulse milestones.
+This milestone seals the context, loads the first native Pulse image at physical address `0x00200000`, and proves the direct transition in QEMU. Prelude allocates a separate 128 KiB stack for Pulse and captures the active GOP framebuffer before collecting the final memory map. Pulse validates the contract, runs its early software framebuffer path, selects EFI conventional memory, builds its own page tables, and begins interrupt bootstrap.
 
 ## References
 

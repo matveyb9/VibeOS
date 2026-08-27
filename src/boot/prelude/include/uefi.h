@@ -27,6 +27,7 @@ typedef UINT64 EFI_PHYSICAL_ADDRESS;
 #define EFI_SUCCESS ((EFI_STATUS)0)
 #define EFI_LOAD_ERROR ((EFI_STATUS)0x8000000000000001ULL)
 #define EFI_INVALID_PARAMETER ((EFI_STATUS)0x8000000000000002ULL)
+#define EFI_UNSUPPORTED ((EFI_STATUS)0x8000000000000003ULL)
 #define EFI_BUFFER_TOO_SMALL ((EFI_STATUS)0x8000000000000005ULL)
 #define EFI_OUT_OF_RESOURCES ((EFI_STATUS)0x8000000000000009ULL)
 #define EFI_ALLOCATE_ANY_PAGES ((UINT32)0)
@@ -56,6 +57,45 @@ typedef struct {
     UINT64 number_of_pages;
     UINT64 attribute;
 } EFI_MEMORY_DESCRIPTOR;
+
+typedef enum {
+    EFI_PIXEL_RGB_RESERVED_8_BIT_PER_COLOR = 0,
+    EFI_PIXEL_BGR_RESERVED_8_BIT_PER_COLOR = 1,
+    EFI_PIXEL_BIT_MASK = 2,
+    EFI_PIXEL_BLT_ONLY = 3
+} EFI_GRAPHICS_PIXEL_FORMAT;
+
+typedef struct {
+    UINT32 red_mask;
+    UINT32 green_mask;
+    UINT32 blue_mask;
+    UINT32 reserved_mask;
+} EFI_PIXEL_BITMASK;
+
+typedef struct {
+    UINT32 version;
+    UINT32 horizontal_resolution;
+    UINT32 vertical_resolution;
+    EFI_GRAPHICS_PIXEL_FORMAT pixel_format;
+    EFI_PIXEL_BITMASK pixel_information;
+    UINT32 pixels_per_scan_line;
+} EFI_GRAPHICS_OUTPUT_MODE_INFORMATION;
+
+typedef struct {
+    UINT32 max_mode;
+    UINT32 mode;
+    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info;
+    UINTN size_of_info;
+    EFI_PHYSICAL_ADDRESS frame_buffer_base;
+    UINTN frame_buffer_size;
+} EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE;
+
+typedef struct EFI_GRAPHICS_OUTPUT_PROTOCOL {
+    void *query_mode;
+    void *set_mode;
+    void *blt;
+    EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode;
+} EFI_GRAPHICS_OUTPUT_PROTOCOL;
 
 typedef EFI_STATUS(EFIAPI *EFI_ALLOCATE_PAGES)(
     UINT32 type, UINT32 memory_type, UINTN pages, EFI_PHYSICAL_ADDRESS *memory);
