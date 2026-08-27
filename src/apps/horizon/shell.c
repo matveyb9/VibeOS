@@ -73,14 +73,27 @@ int horizon_build_desktop_scene_for_state_and_request(
                           card_width - (gap / 2U), gap / 6U, UINT32_C(0xffcf5c))) {
         return 0;
     }
-    return canvas_scene_add_label(scene, gap, gap / 2U, 2U, UINT32_C(0xe6f1ff), "VIBEOS") &&
-           canvas_scene_add_label(scene, left_margin + gap, header_height + (gap * 2U), 2U, UINT32_C(0xe6f1ff), first_application->label) &&
-           canvas_scene_add_label(scene, left_margin + card_width + (gap * 2U), header_height + (gap * 3U), 2U,
-                                  UINT32_C(0xe6f1ff), second_application->label) &&
-           canvas_scene_add_label(scene, left_margin + (2U * card_width) + (gap * 3U), header_height + (gap * 2U),
-                                  2U, UINT32_C(0xe6f1ff), third_application->label) &&
-           (native_request_status == 0U ||
-            canvas_scene_add_label(scene, width / 4U, height - dock_height, 1U, UINT32_C(0xffcf5c), "REQUEST FORMED"));
+    if (!canvas_scene_add_label(scene, gap, gap / 2U, 2U, UINT32_C(0xe6f1ff), "VIBEOS") ||
+        !canvas_scene_add_label(scene, left_margin + gap, header_height + (gap * 2U), 2U, UINT32_C(0xe6f1ff), first_application->label) ||
+        !canvas_scene_add_label(scene, left_margin + card_width + (gap * 2U), header_height + (gap * 3U), 2U,
+                                UINT32_C(0xe6f1ff), second_application->label) ||
+        !canvas_scene_add_label(scene, left_margin + (2U * card_width) + (gap * 3U), header_height + (gap * 2U),
+                                2U, UINT32_C(0xe6f1ff), third_application->label)) {
+        return 0;
+    }
+    if (native_request_status == HORIZON_NATIVE_REQUEST_NONE) {
+        return 1;
+    }
+    if (native_request_status == HORIZON_NATIVE_REQUEST_FORMED) {
+        return canvas_scene_add_label(scene, width / 4U, height - dock_height, 1U, UINT32_C(0xffcf5c), "FORMED");
+    }
+    if (native_request_status == HORIZON_NATIVE_REQUEST_ADMITTED) {
+        return canvas_scene_add_label(scene, width / 4U, height - dock_height, 1U, UINT32_C(0x70e0b6), "ADMITTED");
+    }
+    if (native_request_status == HORIZON_NATIVE_REQUEST_REJECTED_NOT_INSTALLED) {
+        return canvas_scene_add_label(scene, width / 4U, height - dock_height, 1U, UINT32_C(0xff9d68), "NOT INSTALLED");
+    }
+    return canvas_scene_add_label(scene, width / 4U, height - dock_height, 1U, UINT32_C(0xff7a90), "INVALID");
 }
 
 int horizon_build_desktop_scene_for_state(
