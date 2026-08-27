@@ -50,6 +50,11 @@ typedef struct {
 } EFI_GUID;
 
 typedef struct {
+    EFI_GUID vendor_guid;
+    void *vendor_table;
+} EFI_CONFIGURATION_TABLE;
+
+typedef struct {
     UINT32 type;
     UINT32 padding;
     UINT64 physical_start;
@@ -191,7 +196,7 @@ typedef struct EFI_SYSTEM_TABLE {
     void *runtime_services;
     EFI_BOOT_SERVICES *boot_services;
     UINTN number_of_table_entries;
-    void *configuration_table;
+    EFI_CONFIGURATION_TABLE *configuration_table;
 } EFI_SYSTEM_TABLE;
 
 #endif

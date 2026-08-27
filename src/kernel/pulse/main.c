@@ -12,6 +12,7 @@
 #include "scheduler.h"
 #include "context.h"
 #include "timer.h"
+#include <dawn_acpi.h>
 #include <origin.h>
 #include <vaultfs.h>
 #include <session_mode.h>
@@ -52,6 +53,8 @@ static int pulse_context_is_valid(const DAWN_CONTEXT *context) {
            context->boot_reservation_count != 0U &&
            context->boot_reservations_size ==
                (uint64_t)context->boot_reservation_count * context->boot_reservation_descriptor_size &&
+           context->acpi_rsdp_physical_address != 0U &&
+           dawn_acpi_rsdp_is_valid((const void *)(uintptr_t)context->acpi_rsdp_physical_address) &&
            (context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_RGBX8888 ||
             context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_BGRX8888 ||
             context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_BGR888);
@@ -80,6 +83,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         pulse_debug_write("HORIZON: desktop scene rendered\n");
         pulse_debug_write("ATLAS: keyboard event queue verified\n");
         pulse_debug_write("ATLAS: PCI inventory verified\n");
+        pulse_debug_write("DAWN: ACPI RSDP handoff verified\n");
         pulse_scheduler_initialize();
         if (!pulse_scheduler_create_ready_task(&first_task) ||
             !pulse_scheduler_create_ready_task(&second_task) ||

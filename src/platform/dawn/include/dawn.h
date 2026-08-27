@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 #define DAWN_CONTEXT_MAGIC UINT64_C(0x4441574E43545831)
-#define DAWN_CONTEXT_VERSION UINT32_C(4)
+#define DAWN_CONTEXT_VERSION UINT32_C(5)
 #define DAWN_MEMORY_DESCRIPTOR_VERSION UINT32_C(1)
 #define DAWN_MEMORY_RANGE_VERSION UINT32_C(1)
 
@@ -61,6 +61,7 @@ typedef struct {
     uint64_t boot_reservation_descriptor_size;
     uint32_t boot_reservation_descriptor_version;
     uint32_t boot_reservation_count;
+    uint64_t acpi_rsdp_physical_address;
 } DAWN_CONTEXT;
 
 #endif

@@ -2,20 +2,20 @@
   <strong>🇺🇸 ENGLISH</strong> &nbsp;|&nbsp; <a href="../../ru/specs/DAWN_CONTEXT.md">🇷🇺 РУССКИЙ</a>
 </p>
 
-# Dawn Context v4
+# Dawn Context v5
 
-**Status:** Version 4 is implemented by both the UEFI Prelude profile and the reproducible QEMU/SeaBIOS Legacy BIOS profile.
+**Status:** Version 5 is implemented by both the UEFI Prelude profile and the reproducible QEMU/SeaBIOS Legacy BIOS profile.
 
 > **Dawn Context** is the single immutable handoff record from Prelude to Pulse. It contains no callable firmware interface and uses physical addresses exclusively.
 
-Version 3 replaced the UEFI memory-descriptor layout with a VibeOS-owned `DAWN_MEMORY_DESCRIPTOR` array. Version 4 appends a second VibeOS-owned `DAWN_MEMORY_RANGE` array for boot-owned physical reservations. This avoids making Pulse or later boot paths depend on a firmware descriptor type, padding, or version. Prelude converts every firmware memory record before the final firmware exit; Pulse then trusts only the normalized result.[1]
+Version 3 replaced the UEFI memory-descriptor layout with a VibeOS-owned `DAWN_MEMORY_DESCRIPTOR` array. Version 4 appended a second VibeOS-owned `DAWN_MEMORY_RANGE` array for boot-owned physical reservations. Version 5 appends the physical address of one validated ACPI Root System Description Pointer (RSDP). This keeps firmware-specific discovery at Prelude while leaving the record portable and independent of callable firmware interfaces. It is metadata for a later ACPI consumer, not an ACPI implementation.[1]
 
 ## Binary layout
 
 | Field | Type | Meaning |
 |---|---:|---|
 | `magic` | `uint64_t` | Constant `DAWN_CONTEXT_MAGIC`. |
-| `version` | `uint32_t` | Current contract version: `4`. |
+| `version` | `uint32_t` | Current contract version: `5`. |
 | `size` | `uint32_t` | Producer's structure size; the layout is append-only. |
 | `memory_map_physical_address` | `uint64_t` | Physical address of VibeOS-owned memory descriptors. |
 | `memory_map_size` | `uint64_t` | Exact byte size of that descriptor array. |
@@ -25,6 +25,7 @@ Version 3 replaced the UEFI memory-descriptor layout with a VibeOS-owned `DAWN_M
 | `kernel_stack_top` / `kernel_stack_size` | `uint64_t` | Early Pulse stack location and byte capacity. |
 | framebuffer fields | mixed | Physical framebuffer address, byte size, dimensions, pixel stride, and `RGBX8888`, `BGRX8888`, or `BGR888` format. |
 | reservation fields | mixed | Physical address, byte size, descriptor stride/version, and count for sorted boot-owned ranges. |
+| `acpi_rsdp_physical_address` | `uint64_t` | Physical address of exactly one Prelude-validated ACPI RSDP. It is not a root-table pointer and does not transfer any firmware API. |
 
 | `DAWN_MEMORY_DESCRIPTOR` field | Meaning |
 |---|---|
@@ -38,12 +39,18 @@ Version 3 replaced the UEFI memory-descriptor layout with a VibeOS-owned `DAWN_M
 | `physical_start` | First physical byte occupied by the boot-owned range. |
 | `byte_size` | Exact occupied byte length; Pulse rounds outward to whole 4 KiB frames before allocation. |
 
-The UEFI producer obtains its map through `GetMemoryMap`, converts UEFI conventional memory to `DAWN_MEMORY_USABLE`, and conservatively marks every other descriptor as reserved before `ExitBootServices`.[1] It publishes sorted, non-overlapping reservations for the fixed Pulse allocation and the early stack. The Legacy BIOS producer maps E820 usable entries to the same `DAWN_MEMORY_USABLE` kind, reserves all other entries, and publishes the first MiB plus the loaded Pulse image as boot-owned ranges. The first range protects the active loader, Dawn Context, stack, VBE data, and transition page tables even when E820 describes part of it as RAM. The QEMU Legacy BIOS profile reports its VBE `0x118` linear framebuffer as `BGR888`; the format is carried by the same contract, not by a BIOS-specific side channel. Therefore Pulse consumes one architecture-neutral shape regardless of firmware path.
+The UEFI producer obtains its map through `GetMemoryMap`, converts UEFI conventional memory to `DAWN_MEMORY_USABLE`, and conservatively marks every other descriptor as reserved before `ExitBootServices`.[2] It publishes sorted, non-overlapping reservations for the fixed Pulse allocation and the early stack. The Legacy BIOS producer maps E820 usable entries to the same `DAWN_MEMORY_USABLE` kind, reserves all other entries, and publishes the first MiB plus the loaded Pulse image as boot-owned ranges. The first range protects the active loader, Dawn Context, stack, VBE data, and transition page tables even when E820 describes part of it as RAM. The QEMU Legacy BIOS profile reports its VBE `0x118` linear framebuffer as `BGR888`; the format is carried by the same contract, not by a BIOS-specific side channel. Therefore Pulse consumes one architecture-neutral shape regardless of firmware path.
+
+Prelude discovers the RSDP before final firmware exit. UEFI Prelude searches EFI configuration tables, preferring the ACPI 2.0-or-later GUID and then falling back to the ACPI 1.0 GUID. Legacy BIOS Prelude scans 16-byte boundaries in the first KiB of EBDA followed by `0xe0000`–`0xfffff`, exactly as specified for IA-PC discovery.[1] Both paths validate the `RSD PTR ` signature and ACPI checksum; revision 2 or later requires the 36-byte extended RSDP checksum. The current x86_64 bootstrap requires the resulting address to fit the identity-mapped lower 4 GiB, then transfers that physical address through the same Dawn shape.
+
+> This milestone **does not** parse RSDT/XSDT or any other ACPI table. It does not evaluate AML, enable ACPI, configure power states, assign PCI resources, program interrupt routing, or provide a real-hardware compatibility claim.
 
 ## Contract rules
 
-The producer must populate all required fields before transferring control and must never expose live firmware services to Pulse. Reservation ranges must be nonempty, non-overlapping, ordered by physical start, and free of integer overflow. The consumer validates magic, version, minimum size, normalized descriptor stride/version, a nonempty map, valid reservation metadata, valid stack, and valid framebuffer before using any address. Unknown future memory kinds remain unusable until a later Pulse contract revision accepts them.
+The producer must populate all required fields before transferring control and must never expose live firmware services to Pulse. Reservation ranges must be nonempty, non-overlapping, ordered by physical start, and free of integer overflow. The consumer validates magic, version, minimum size, normalized descriptor stride/version, a nonempty map, valid reservation metadata, valid stack, valid framebuffer, a nonzero RSDP address, and the RSDP signature/checksum before using the field. Unknown future memory kinds remain unusable until a later Pulse contract revision accepts them.
 
 ## References
 
-[1] [UEFI Specification: Boot Services](https://uefi.org/specs/UEFI/2.9_A/07_Services_Boot_Services.html)
+[1] [ACPI Specification 6.5, §5.2.5: Root System Description Pointer](https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html)
+
+[2] [UEFI Specification: Boot Services](https://uefi.org/specs/UEFI/2.9_A/07_Services_Boot_Services.html)

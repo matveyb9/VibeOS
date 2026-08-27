@@ -1,5 +1,6 @@
 ; VibeOS Prelude — Legacy BIOS stage two for the reproducible QEMU/SeaBIOS path.
-; It owns E820, VBE 2.0 LFB selection, long-mode transition, and Dawn v4 handoff.
+; It owns E820, VBE 2.0 LFB selection, bounded ACPI RSDP discovery, long-mode
+; transition, and Dawn v5 handoff.
 [bits 16]
 [org 0x8000]
 
@@ -11,8 +12,8 @@
 %define VBE_MODE_INFO_ADDRESS 0x6000
 %define DAWN_CONTEXT_MAGIC_LOW 0x43545831
 %define DAWN_CONTEXT_MAGIC_HIGH 0x4441574e
-%define DAWN_CONTEXT_VERSION 4
-%define DAWN_CONTEXT_SIZE 136
+%define DAWN_CONTEXT_VERSION 5
+%define DAWN_CONTEXT_SIZE 144
 %define DAWN_MEMORY_DESCRIPTOR_SIZE 24
 %define DAWN_MEMORY_DESCRIPTOR_VERSION 1
 %define DAWN_MEMORY_RANGE_DESCRIPTOR_SIZE 16
@@ -41,6 +42,8 @@
     call capture_e820
     jc prelude_failure
     call capture_vbe_framebuffer
+    jc prelude_failure
+    call capture_acpi_rsdp
     jc prelude_failure
     call seal_dawn_context
     call debug_dawn_sealed
@@ -207,6 +210,91 @@ capture_vbe_framebuffer:
 .failure:
     xor ax, ax
     mov ds, ax
+    stc
+    ret
+
+capture_acpi_rsdp:
+    mov ax, [0x040e]
+    mov es, ax
+    xor di, di
+    mov cx, 64
+    call scan_acpi_rsdp
+    jnc .found
+    mov ax, 0xe000
+    mov es, ax
+    xor di, di
+    mov cx, 4096
+    call scan_acpi_rsdp
+    jnc .found
+    mov ax, 0xf000
+    mov es, ax
+    xor di, di
+    mov cx, 4094
+    call scan_acpi_rsdp
+    jc .failure
+.found:
+    mov ax, es
+    movzx eax, ax
+    shl eax, 4
+    movzx ebx, di
+    add eax, ebx
+    mov [DAWN_CONTEXT_ADDRESS + 136], eax
+    mov dword [DAWN_CONTEXT_ADDRESS + 140], 0
+    xor ax, ax
+    mov ds, ax
+    clc
+    ret
+.failure:
+    xor ax, ax
+    mov ds, ax
+    stc
+    ret
+
+scan_acpi_rsdp:
+.next:
+    cmp dword [es:di], 0x20445352
+    jne .advance
+    cmp dword [es:di + 4], 0x20525450
+    jne .advance
+    push cx
+    mov cx, 20
+    call acpi_checksum_is_zero
+    pop cx
+    jc .advance
+    cmp byte [es:di + 15], 2
+    jb .valid
+    cmp dword [es:di + 20], 36
+    jne .advance
+    push cx
+    mov cx, 36
+    call acpi_checksum_is_zero
+    pop cx
+    jc .advance
+.valid:
+    clc
+    ret
+.advance:
+    add di, 16
+    loop .next
+    stc
+    ret
+
+acpi_checksum_is_zero:
+    push cx
+    push bx
+    xor bx, bx
+    xor ah, ah
+.next_byte:
+    add ah, [es:di + bx]
+    inc bx
+    loop .next_byte
+    test ah, ah
+    pop bx
+    pop cx
+    jnz .invalid
+    clc
+    ret
+.invalid:
     stc
     ret
 

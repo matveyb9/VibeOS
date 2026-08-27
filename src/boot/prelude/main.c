@@ -8,6 +8,7 @@
 
 #include "uefi.h"
 #include <dawn.h>
+#include <dawn_acpi.h>
 
 #define PRELUDE_PULSE_LOAD_ADDRESS UINT64_C(0x00200000)
 #define PRELUDE_PAGE_SIZE ((UINTN)4096)
@@ -32,6 +33,10 @@ static uint32_t prelude_boot_reservation_count;
 
 static EFI_GUID prelude_graphics_output_protocol_guid = {
     UINT32_C(0x9042a9de), 0x23dc, 0x4a38, {0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a}};
+static EFI_GUID prelude_acpi_20_table_guid = {
+    UINT32_C(0x8868e871), 0xe4f1, 0x11d3, {0xbc, 0x22, 0x00, 0x80, 0xc7, 0x3c, 0x88, 0x81}};
+static EFI_GUID prelude_acpi_10_table_guid = {
+    UINT32_C(0xeb9d2d30), 0x2d88, 0x11d3, {0x9a, 0x16, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0x4d}};
 
 static void prelude_copy_bytes(void *destination, const void *source, UINTN size) {
     uint8_t *output = destination;
@@ -41,6 +46,52 @@ static void prelude_copy_bytes(void *destination, const void *source, UINTN size
     for (index = 0; index < size; ++index) {
         output[index] = input[index];
     }
+}
+
+static int prelude_guid_equal(const EFI_GUID *left, const EFI_GUID *right) {
+    UINTN index;
+
+    if (left->data1 != right->data1 || left->data2 != right->data2 || left->data3 != right->data3) {
+        return 0;
+    }
+    for (index = 0U; index < sizeof(left->data4); ++index) {
+        if (left->data4[index] != right->data4[index]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static EFI_STATUS prelude_capture_acpi_rsdp(EFI_SYSTEM_TABLE *system_table) {
+    EFI_CONFIGURATION_TABLE *fallback = (void *)0;
+    UINTN table_index;
+
+    if (system_table->configuration_table == (void *)0) {
+        return EFI_UNSUPPORTED;
+    }
+    for (table_index = 0U; table_index < system_table->number_of_table_entries; ++table_index) {
+        EFI_CONFIGURATION_TABLE *table = &system_table->configuration_table[table_index];
+
+        if (prelude_guid_equal(&table->vendor_guid, &prelude_acpi_20_table_guid)) {
+            if (table->vendor_table == (void *)0 ||
+                (uint64_t)(UINTN)table->vendor_table > UINT64_C(0xffffffff) ||
+                !dawn_acpi_rsdp_is_valid(table->vendor_table)) {
+                return EFI_LOAD_ERROR;
+            }
+            dawn_context.acpi_rsdp_physical_address = (uint64_t)(UINTN)table->vendor_table;
+            return EFI_SUCCESS;
+        }
+        if (prelude_guid_equal(&table->vendor_guid, &prelude_acpi_10_table_guid)) {
+            fallback = table;
+        }
+    }
+    if (fallback == (void *)0 || fallback->vendor_table == (void *)0 ||
+        (uint64_t)(UINTN)fallback->vendor_table > UINT64_C(0xffffffff) ||
+        !dawn_acpi_rsdp_is_valid(fallback->vendor_table)) {
+        return EFI_UNSUPPORTED;
+    }
+    dawn_context.acpi_rsdp_physical_address = (uint64_t)(UINTN)fallback->vendor_table;
+    return EFI_SUCCESS;
 }
 
 static EFI_STATUS prelude_record_boot_reservation(uint64_t physical_start, uint64_t byte_size) {
@@ -85,6 +136,11 @@ static EFI_STATUS prelude_capture_dawn_context(EFI_SYSTEM_TABLE *system_table) {
     UINTN descriptor_index;
     EFI_MEMORY_DESCRIPTOR *memory_map = (void *)0;
     DAWN_MEMORY_DESCRIPTOR *dawn_memory_map = (void *)0;
+
+    status = prelude_capture_acpi_rsdp(system_table);
+    if (status != EFI_SUCCESS) {
+        return status;
+    }
 
     status = boot_services->get_memory_map(
         &memory_map_size, (void *)0, &map_key, &descriptor_size, &descriptor_version);
