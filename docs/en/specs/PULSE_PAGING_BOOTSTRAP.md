@@ -20,7 +20,7 @@ After establishing its own stack and early physical-frame source, Pulse creates 
 | Permissions | Present and writable; executable while the early bootstrap remains active |
 | LA57 | Explicitly rejected in this first four-level implementation |
 
-The four-GiB identity range preserves access to Pulse at 2 MiB, Dawn Context, the early stack, active page tables, QEMU's low I/O layout, and the firmware framebuffer range used by the first Prism software-renderer milestone. Dawn Context v4 carries explicit boot-owned physical ranges: the early allocator rounds them to frames and never returns a covered frame. The Legacy BIOS producer therefore protects its first MiB bootstrap region even when firmware exposes it as usable RAM. The map is intentionally broad and includes regions that later Pulse mappings will classify as RAM or MMIO before applying narrower permissions.
+The four-GiB identity range preserves access to Pulse at 2 MiB, Dawn Context, the early stack, active page tables, QEMU's low I/O layout, and the firmware framebuffer range used by the first Prism software-renderer milestone. Dawn Context v4 carries explicit boot-owned physical ranges: the early allocator rounds them to frames and never returns a covered frame. It also keeps a bounded ownership record for its first 64 allocations, currently distinguishing general bootstrap and page-table frames. The Legacy BIOS producer therefore protects its first MiB bootstrap region even when firmware exposes it as usable RAM. The map is intentionally broad and includes regions that later Pulse mappings will classify as RAM or MMIO before applying narrower permissions.
 
 ## Limits and next change
 

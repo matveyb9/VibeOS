@@ -94,12 +94,13 @@ int pulse_paging_initialize(void) {
     uint64_t index;
 
     if ((pulse_read_cr4() & PULSE_X86_CR4_LA57) != 0U ||
-        !pulse_memory_take_frame(&pml4_physical_address) ||
-        !pulse_memory_take_frame(&pdpt_physical_address)) {
+        !pulse_memory_take_frame_owned(PULSE_MEMORY_OWNER_PAGE_TABLE, &pml4_physical_address) ||
+        !pulse_memory_take_frame_owned(PULSE_MEMORY_OWNER_PAGE_TABLE, &pdpt_physical_address)) {
         return 0;
     }
     for (index = 0; index < PULSE_X86_IDENTITY_PAGE_DIRECTORIES; ++index) {
-        if (!pulse_memory_take_frame(&page_directory_physical_addresses[index])) {
+        if (!pulse_memory_take_frame_owned(
+                PULSE_MEMORY_OWNER_PAGE_TABLE, &page_directory_physical_addresses[index])) {
             return 0;
         }
         page_directories[index] = (uint64_t *)(uintptr_t)page_directory_physical_addresses[index];

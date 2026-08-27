@@ -20,9 +20,15 @@ typedef struct {
     uint64_t limit;
 } PULSE_BOOT_RESERVATION;
 
+typedef struct {
+    uint64_t physical_address;
+    PULSE_MEMORY_OWNER owner;
+} PULSE_ALLOCATED_FRAME;
+
 static PULSE_MEMORY_STATE early_memory_state;
 static PULSE_MEMORY_REGION early_memory_regions[PULSE_MEMORY_MAX_REGIONS];
 static PULSE_BOOT_RESERVATION early_boot_reservations[PULSE_MEMORY_MAX_BOOT_RESERVATIONS];
+static PULSE_ALLOCATED_FRAME early_allocated_frames[PULSE_MEMORY_MAX_ALLOCATED_FRAMES];
 
 static uint64_t pulse_align_up(uint64_t value, uint64_t alignment) {
     return (value + (alignment - 1U)) & ~(alignment - 1U);
@@ -48,6 +54,7 @@ static void pulse_clear_memory_state(void) {
     early_memory_state.next_free_frame = 0;
     early_memory_state.usable_page_count = 0;
     early_memory_state.boot_reserved_page_count = 0;
+    early_memory_state.allocated_page_count = 0;
     early_memory_state.region_count = 0;
     early_memory_state.active_region_index = 0;
     early_memory_state.boot_reservation_count = 0;
@@ -60,6 +67,10 @@ static void pulse_clear_memory_state(void) {
     for (index = 0; index < PULSE_MEMORY_MAX_BOOT_RESERVATIONS; ++index) {
         early_boot_reservations[index].base = 0;
         early_boot_reservations[index].limit = 0;
+    }
+    for (index = 0; index < PULSE_MEMORY_MAX_ALLOCATED_FRAMES; ++index) {
+        early_allocated_frames[index].physical_address = 0;
+        early_allocated_frames[index].owner = PULSE_MEMORY_OWNER_NONE;
     }
 }
 
@@ -201,10 +212,11 @@ int pulse_memory_initialize(const DAWN_CONTEXT *context) {
     return 1;
 }
 
-int pulse_memory_take_frame(uint64_t *physical_address) {
+int pulse_memory_take_frame_owned(PULSE_MEMORY_OWNER owner, uint64_t *physical_address) {
     uint32_t region_index;
 
-    if (physical_address == (void *)0) {
+    if (physical_address == (void *)0 || owner == PULSE_MEMORY_OWNER_NONE ||
+        early_memory_state.allocated_page_count >= PULSE_MEMORY_MAX_ALLOCATED_FRAMES) {
         return 0;
     }
 
@@ -221,6 +233,9 @@ int pulse_memory_take_frame(uint64_t *physical_address) {
                 continue;
             }
             *physical_address = candidate;
+            early_allocated_frames[early_memory_state.allocated_page_count].physical_address = candidate;
+            early_allocated_frames[early_memory_state.allocated_page_count].owner = owner;
+            ++early_memory_state.allocated_page_count;
             early_memory_state.active_region_index = region_index;
             early_memory_state.selected_region_base = region->base;
             early_memory_state.selected_region_limit = region->limit;
@@ -230,6 +245,21 @@ int pulse_memory_take_frame(uint64_t *physical_address) {
     }
 
     return 0;
+}
+
+int pulse_memory_take_frame(uint64_t *physical_address) {
+    return pulse_memory_take_frame_owned(PULSE_MEMORY_OWNER_BOOTSTRAP, physical_address);
+}
+
+PULSE_MEMORY_OWNER pulse_memory_frame_owner(uint64_t physical_address) {
+    uint32_t frame_index;
+
+    for (frame_index = 0; frame_index < early_memory_state.allocated_page_count; ++frame_index) {
+        if (early_allocated_frames[frame_index].physical_address == physical_address) {
+            return early_allocated_frames[frame_index].owner;
+        }
+    }
+    return PULSE_MEMORY_OWNER_NONE;
 }
 
 const PULSE_MEMORY_STATE *pulse_memory_state(void) {

@@ -45,9 +45,12 @@ int main(void) {
 
     if (!expect(!pulse_memory_initialize(&(DAWN_CONTEXT){0}), "invalid descriptor stride is rejected") ||
         !expect(pulse_memory_initialize(&context), "memory regions and boot reservations initialize") ||
+        !expect(!pulse_memory_take_frame_owned(PULSE_MEMORY_OWNER_NONE, &frame_one),
+                    "empty frame owner is rejected") ||
         !expect(pulse_memory_take_frame(&frame_one), "first frame is available") ||
         !expect(pulse_memory_take_frame(&frame_two), "second frame is available") ||
-        !expect(pulse_memory_take_frame(&frame_three), "third frame advances past reservations") ||
+        !expect(pulse_memory_take_frame_owned(PULSE_MEMORY_OWNER_PAGE_TABLE, &frame_three),
+                    "owned frame advances past reservations") ||
         !expect(!pulse_memory_take_frame(&frame_four), "allocator excludes all boot-owned frames")) {
         return 1;
     }
@@ -58,7 +61,12 @@ int main(void) {
         !expect(frame_three == UINT64_C(0x9000), "allocator advances past reserved frame in next region") ||
         !expect(state->usable_page_count == 3U, "usable count excludes boot-owned pages") ||
         !expect(state->boot_reserved_page_count == 2U, "boot-owned page count is retained") ||
+        !expect(state->allocated_page_count == 3U, "allocated frame count is retained") ||
         !expect(state->boot_reservation_count == 2U, "both boot reservations are retained") ||
+        !expect(pulse_memory_frame_owner(frame_one) == PULSE_MEMORY_OWNER_BOOTSTRAP &&
+                    pulse_memory_frame_owner(frame_three) == PULSE_MEMORY_OWNER_PAGE_TABLE &&
+                    pulse_memory_frame_owner(UINT64_C(0xa000)) == PULSE_MEMORY_OWNER_NONE,
+                    "allocated frames retain their explicit owners") ||
         !expect(state->region_count == 2U, "both conventional regions are retained")) {
         return 1;
     }
