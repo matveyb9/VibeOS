@@ -77,6 +77,13 @@ typedef struct {
     uint32_t checksum;
 } VAULTFS_ROOT_DIRECTORY_BLOCK;
 
+typedef struct {
+    uint64_t transaction_id;
+    uint64_t target_root_block;
+    uint64_t next_generation;
+    uint32_t payload_checksum;
+} VAULTFS_ROOT_UPDATE_PLAN;
+
 uint32_t vaultfs_crc32(const void *data, uint64_t byte_count);
 
 void vaultfs_superblock_initialize(
@@ -112,6 +119,11 @@ int vaultfs_recovery_decide(
     const VAULTFS_JOURNAL_ENTRY *journal,
     const VAULTFS_ROOT_DIRECTORY_BLOCK *root_block,
     VAULTFS_RECOVERY_DECISION *decision);
+int vaultfs_root_update_plan_form(
+    const VAULTFS_SUPERBLOCK *superblock,
+    const VAULTFS_ROOT_DIRECTORY_BLOCK *next_root_block,
+    uint64_t transaction_id,
+    VAULTFS_ROOT_UPDATE_PLAN *plan);
 int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot);
 int vaultfs_system_slot_confirm(VAULTFS_SUPERBLOCK *superblock);
 int vaultfs_system_slot_recover(const VAULTFS_SUPERBLOCK *superblock, uint64_t *boot_slot);

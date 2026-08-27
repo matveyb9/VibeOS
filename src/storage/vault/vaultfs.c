@@ -386,6 +386,23 @@ int vaultfs_recovery_decide(
     return 1;
 }
 
+int vaultfs_root_update_plan_form(
+    const VAULTFS_SUPERBLOCK *superblock,
+    const VAULTFS_ROOT_DIRECTORY_BLOCK *next_root_block,
+    uint64_t transaction_id,
+    VAULTFS_ROOT_UPDATE_PLAN *plan) {
+    if (plan == (void *)0 || transaction_id == 0U || !vaultfs_superblock_valid(superblock) ||
+        !vaultfs_root_directory_block_valid(next_root_block) || superblock->generation == UINT64_MAX ||
+        next_root_block->generation != superblock->generation + UINT64_C(1)) {
+        return 0;
+    }
+    plan->transaction_id = transaction_id;
+    plan->target_root_block = superblock->backup_root_directory_block;
+    plan->next_generation = next_root_block->generation;
+    plan->payload_checksum = next_root_block->checksum;
+    return 1;
+}
+
 int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot) {
     if (!vaultfs_superblock_valid(superblock) || !vaultfs_system_slot_valid(target_slot) ||
         target_slot == superblock->active_system_slot) {

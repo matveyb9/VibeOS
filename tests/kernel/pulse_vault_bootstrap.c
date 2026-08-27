@@ -23,6 +23,7 @@ int main(void) {
     VAULTFS_JOURNAL_ENTRY journal_entry;
     VAULTFS_JOURNAL_ENTRY loaded_journal_entry;
     VAULTFS_RECOVERY_DECISION recovery_decision;
+    VAULTFS_ROOT_UPDATE_PLAN update_plan;
     VAULTFS_DIRECTORY directory;
     VAULTFS_ROOT_DIRECTORY_BLOCK root_block;
     VAULTFS_ROOT_DIRECTORY_BLOCK loaded_root_block;
@@ -60,6 +61,13 @@ int main(void) {
 
     vaultfs_superblock_initialize(&primary, UINT64_C(7), 0U, UINT64_C(2), UINT64_C(3), UINT64_C(70));
     vaultfs_superblock_initialize(&backup, UINT64_C(8), 1U, UINT64_C(2), UINT64_C(3), UINT64_C(80));
+    if (!expect(vaultfs_root_update_plan_form(&primary, &root_block, UINT64_C(11), &update_plan) &&
+                    update_plan.target_root_block == UINT64_C(3) && update_plan.next_generation == UINT64_C(8),
+                    "immutable root update plan targets alternate root snapshot") ||
+        !expect(!vaultfs_root_update_plan_form(&primary, &root_block, 0U, &update_plan),
+                    "root update plan rejects zero transaction identity")) {
+        return 1;
+    }
     if (!expect(vaultfs_superblock_valid(&primary) && primary.root_directory_block == UINT64_C(2),
                     "primary stores sealed root-directory block metadata") ||
         !expect(vaultfs_superblock_store(&device, 0U, &primary), "primary stores") ||
