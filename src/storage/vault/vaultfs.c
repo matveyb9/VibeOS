@@ -2,16 +2,27 @@
 
 #include "vaultfs.h"
 
-static uint64_t vaultfs_checksum(const VAULTFS_SUPERBLOCK *superblock) {
-    const uint8_t *bytes = (const uint8_t *)superblock;
-    uint64_t value = UINT64_C(1469598103934665603);
+uint32_t vaultfs_crc32(const void *data, uint64_t byte_count) {
+    const uint8_t *bytes = (const uint8_t *)data;
+    uint32_t value = UINT32_C(0xffffffff);
     uint64_t index;
+    uint32_t bit;
 
-    for (index = 0; index < sizeof(VAULTFS_SUPERBLOCK) - sizeof(superblock->checksum); ++index) {
+    for (index = 0; index < byte_count; ++index) {
         value ^= bytes[index];
-        value *= UINT64_C(1099511628211);
+        for (bit = 0; bit < 8U; ++bit) {
+            value = (value >> 1U) ^ ((value & 1U) != 0U ? UINT32_C(0xedb88320) : 0U);
+        }
     }
-    return value;
+    return ~value;
+}
+
+static uint32_t vaultfs_superblock_checksum(const VAULTFS_SUPERBLOCK *superblock) {
+    return vaultfs_crc32(superblock, sizeof(VAULTFS_SUPERBLOCK) - sizeof(superblock->checksum));
+}
+
+static uint32_t vaultfs_journal_checksum(const VAULTFS_JOURNAL_ENTRY *entry) {
+    return vaultfs_crc32(entry, sizeof(VAULTFS_JOURNAL_ENTRY) - sizeof(entry->checksum));
 }
 
 static void vaultfs_copy(VAULTFS_SUPERBLOCK *destination, const VAULTFS_SUPERBLOCK *source) {
@@ -36,7 +47,7 @@ void vaultfs_superblock_initialize(
         superblock->generation = generation;
         superblock->active_system_slot = active_system_slot;
         superblock->journal_sequence = journal_sequence;
-        superblock->checksum = vaultfs_checksum(superblock);
+        superblock->checksum = vaultfs_superblock_checksum(superblock);
     }
 }
 
@@ -44,7 +55,7 @@ int vaultfs_superblock_valid(const VAULTFS_SUPERBLOCK *superblock) {
     return superblock != (void *)0 && superblock->magic == VAULTFS_SUPERBLOCK_MAGIC &&
            superblock->format_version == VAULTFS_FORMAT_VERSION &&
            superblock->block_bytes == ATLAS_BLOCK_BYTES &&
-           superblock->checksum == vaultfs_checksum(superblock);
+           superblock->checksum == vaultfs_superblock_checksum(superblock);
 }
 
 int vaultfs_superblock_store(
@@ -86,12 +97,43 @@ int vaultfs_superblock_load_latest(
     return 1;
 }
 
+void vaultfs_journal_prepare(
+    VAULTFS_JOURNAL_ENTRY *entry,
+    uint64_t transaction_id,
+    uint64_t target_block,
+    uint32_t payload_checksum) {
+    if (entry != (void *)0) {
+        entry->magic = VAULTFS_JOURNAL_MAGIC;
+        entry->transaction_id = transaction_id;
+        entry->target_block = target_block;
+        entry->payload_checksum = payload_checksum;
+        entry->state = VAULTFS_JOURNAL_PREPARED;
+        entry->checksum = vaultfs_journal_checksum(entry);
+    }
+}
+
+int vaultfs_journal_valid(const VAULTFS_JOURNAL_ENTRY *entry) {
+    return entry != (void *)0 && entry->magic == VAULTFS_JOURNAL_MAGIC &&
+           (entry->state == VAULTFS_JOURNAL_PREPARED || entry->state == VAULTFS_JOURNAL_COMMITTED) &&
+           entry->checksum == vaultfs_journal_checksum(entry);
+}
+
+int vaultfs_journal_commit(VAULTFS_JOURNAL_ENTRY *entry) {
+    if (!vaultfs_journal_valid(entry) || entry->state != VAULTFS_JOURNAL_PREPARED) {
+        return 0;
+    }
+    entry->state = VAULTFS_JOURNAL_COMMITTED;
+    entry->checksum = vaultfs_journal_checksum(entry);
+    return 1;
+}
+
 int vaultfs_runtime_probe(void) {
     static uint8_t storage[ATLAS_BLOCK_BYTES * 4U];
     ATLAS_RAM_BLOCK_DEVICE device;
     VAULTFS_SUPERBLOCK primary;
     VAULTFS_SUPERBLOCK backup;
     VAULTFS_SUPERBLOCK recovered;
+    VAULTFS_JOURNAL_ENTRY journal_entry;
 
     if (!atlas_ram_block_device_init(&device, storage, sizeof(storage))) {
         return 0;
@@ -108,5 +150,8 @@ int vaultfs_runtime_probe(void) {
         !vaultfs_superblock_load_latest(&device, 0U, 1U, &recovered)) {
         return 0;
     }
-    return recovered.generation == UINT64_C(4) && recovered.active_system_slot == 1U;
+    vaultfs_journal_prepare(&journal_entry, UINT64_C(51), UINT64_C(3), UINT32_C(0x12345678));
+    return recovered.generation == UINT64_C(4) && recovered.active_system_slot == 1U &&
+           vaultfs_journal_valid(&journal_entry) && vaultfs_journal_commit(&journal_entry) &&
+           vaultfs_journal_valid(&journal_entry) && journal_entry.state == VAULTFS_JOURNAL_COMMITTED;
 }

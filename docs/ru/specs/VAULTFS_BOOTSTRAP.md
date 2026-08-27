@@ -12,9 +12,9 @@
 |---|---|
 | Atlas backend | Bounded RAM block device с block по 4 КиБ |
 | VaultFS metadata | Primary и backup superblock |
-| Integrity | 64-битная FNV-1a checksum sealed field |
+| Integrity | CRC32 по sealed metadata field |
 | Selection | Наивысшая valid generation, primary при равенстве |
 | System slot | Закодирован как `active_system_slot` для будущего A/B control |
-| Journal | Поле `journal_sequence` зарезервировано для journal layer |
+| Journal | Metadata-journal entry state machine Prepared → committed |
 
-QEMU probe записывает новый primary и более старый backup, повреждает checksum primary и подтверждает, что recovery выбирает backup slot. Host-тесты независимо покрывают validation device, обычный порядок generation, fallback при invalid backup и обратный runtime-recovery case. Extent, B+ tree, metadata journal, persistence на physical device, installer flow и Recovery UI остаются следующей работой VaultFS.
+QEMU probe записывает новый primary и более старый backup, повреждает checksum primary, подтверждает, что recovery выбирает backup slot, а затем запечатывает и commit metadata-journal entry. Host-тесты независимо покрывают validation device, обычный порядок generation, fallback при invalid backup, обратный runtime recovery, неизменность commit и tampering journal. Extent, B+ tree, persistent journal placement, driver physical device, installer flow и Recovery UI остаются следующей работой VaultFS.

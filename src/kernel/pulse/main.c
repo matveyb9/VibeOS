@@ -51,6 +51,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         pulse_interrupts_initialize() && origin_runtime_probe() && vaultfs_runtime_probe()) {
         pulse_debug_write("ORIGIN: delegated key verified\n");
         pulse_debug_write("VAULT: redundant superblock recovered\n");
+        pulse_debug_write("VAULT: journal commit verified\n");
         pulse_scheduler_initialize();
         if (!pulse_scheduler_create_ready_task(&first_task) ||
             !pulse_scheduler_create_ready_task(&second_task) ||

@@ -20,6 +20,7 @@ int main(void) {
     VAULTFS_SUPERBLOCK primary;
     VAULTFS_SUPERBLOCK backup;
     VAULTFS_SUPERBLOCK selected;
+    VAULTFS_JOURNAL_ENTRY journal_entry;
 
     if (!expect(!atlas_ram_block_device_init(&device, storage, ATLAS_BLOCK_BYTES - 1U),
                     "unaligned block device size is rejected") ||
@@ -45,6 +46,20 @@ int main(void) {
                     selected.generation == UINT64_C(7),
                     "valid primary recovers from bad backup") ||
         !expect(vaultfs_runtime_probe(), "runtime probe recovers from bad primary")) {
+        return 1;
+    }
+
+    vaultfs_journal_prepare(&journal_entry, UINT64_C(9), UINT64_C(2), UINT32_C(0x10203040));
+    if (!expect(vaultfs_journal_valid(&journal_entry), "prepared journal entry validates") ||
+        !expect(vaultfs_journal_commit(&journal_entry), "prepared entry commits") ||
+        !expect(journal_entry.state == VAULTFS_JOURNAL_COMMITTED && vaultfs_journal_valid(&journal_entry),
+                    "committed entry is resealed") ||
+        !expect(!vaultfs_journal_commit(&journal_entry), "committed entry cannot commit twice")) {
+        return 1;
+    }
+
+    journal_entry.target_block ^= UINT64_C(1);
+    if (!expect(!vaultfs_journal_valid(&journal_entry), "tampered journal entry is rejected")) {
         return 1;
     }
 

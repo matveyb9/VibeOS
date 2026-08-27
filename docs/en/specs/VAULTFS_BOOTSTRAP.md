@@ -12,9 +12,9 @@ Atlas now defines the independent block-device boundary consumed by storage code
 |---|---|
 | Atlas backend | Bounded RAM block device with 4 KiB blocks |
 | VaultFS metadata | Primary and backup superblocks |
-| Integrity | 64-bit FNV-1a checksum over sealed fields |
+| Integrity | CRC32 over sealed metadata fields |
 | Selection | Highest valid generation, primary on a tie |
 | System slot | Encoded as `active_system_slot` for future A/B control |
-| Journal | `journal_sequence` field reserved for the journal layer |
+| Journal | Prepared → committed metadata-journal entry state machine |
 
-The QEMU probe writes a newer primary and an older backup, corrupts the primary checksum, and confirms that recovery selects the backup slot. Host tests independently cover device validation, normal generation ordering, invalid-backup fallback, and the inverse runtime-recovery case. Extents, B+ trees, the metadata journal, persistence to physical devices, installer flows, and Recovery UI remain subsequent VaultFS work.
+The QEMU probe writes a newer primary and an older backup, corrupts the primary checksum, confirms that recovery selects the backup slot, and seals then commits a metadata-journal entry. Host tests independently cover device validation, normal generation ordering, invalid-backup fallback, inverse runtime recovery, commit immutability, and journal tampering. Extents, B+ trees, persistent journal placement, physical-device drivers, installer flows, and Recovery UI remain subsequent VaultFS work.
