@@ -70,13 +70,34 @@ static void make_root_table(uint8_t *table, uint32_t length, const uint8_t signa
     apply_checksum(table, length, 9U);
 }
 
+static int identity_reader(uint64_t physical_address, uint32_t byte_count, uint8_t *destination, void *context) {
+    const uint8_t *source = (const uint8_t *)(uintptr_t)physical_address;
+    uint32_t index;
+
+    (void)context;
+    if (source == (const void *)0 || destination == (void *)0) {
+        return 0;
+    }
+    for (index = 0U; index < byte_count; ++index) {
+        destination[index] = source[index];
+    }
+    return 1;
+}
+
 int main(void) {
     static uint8_t rsdp[36];
     static uint8_t xsdt[44];
+    static uint8_t xsdt_children[52];
+    static uint8_t xsdt_capacity[556];
     static uint8_t rsdt[44];
+    static uint8_t child_madt[36];
+    static uint8_t child_mcfg[36];
     DAWN_ACPI_ROOT_TABLE_METADATA metadata;
+    DAWN_ACPI_CHILD_TABLE_INVENTORY inventory;
     static const uint8_t xsdt_signature[4] = {'X', 'S', 'D', 'T'};
     static const uint8_t rsdt_signature[4] = {'R', 'S', 'D', 'T'};
+    static const uint8_t madt_signature[4] = {'A', 'P', 'I', 'C'};
+    static const uint8_t mcfg_signature[4] = {'M', 'C', 'F', 'G'};
 
     make_valid_rsdp_v2(rsdp);
     if (!expect(!dawn_acpi_rsdp_is_valid((const void *)0), "null pointer is rejected") ||
@@ -123,6 +144,46 @@ int main(void) {
         !expect(metadata.kind == DAWN_ACPI_ROOT_TABLE_RSDT && metadata.byte_size == sizeof(rsdt) &&
                     metadata.entry_count == 2U,
                 "RSDT metadata retains 32-bit entry width")) {
+        return 1;
+    }
+    make_root_table(child_madt, sizeof(child_madt), madt_signature);
+    make_root_table(child_mcfg, sizeof(child_mcfg), mcfg_signature);
+    make_root_table(xsdt_children, sizeof(xsdt_children), xsdt_signature);
+    write_u64_le(&xsdt_children[36], (uint64_t)(uintptr_t)child_madt);
+    write_u64_le(&xsdt_children[44], (uint64_t)(uintptr_t)child_mcfg);
+    apply_checksum(xsdt_children, sizeof(xsdt_children), 9U);
+    make_valid_rsdp_v2(rsdp);
+    write_u64_le(&rsdp[24], (uint64_t)(uintptr_t)xsdt_children);
+    apply_checksum(rsdp, 20U, 8U);
+    apply_checksum(rsdp, 36U, 32U);
+    if (!expect(dawn_acpi_root_table_describe(rsdp, &metadata), "XSDT with children is described") ||
+        !expect(dawn_acpi_child_table_inventory(&metadata, identity_reader, (void *)0, &inventory),
+                "XSDT child headers are inventoried") ||
+        !expect(inventory.entry_count == 2U && inventory.omitted_entry_count == 0U &&
+                    inventory.entries[0].physical_address == (uint64_t)(uintptr_t)child_madt &&
+                    inventory.entries[0].signature[0] == 'A' && inventory.entries[0].signature[3] == 'C' &&
+                    inventory.entries[0].byte_size == sizeof(child_madt) &&
+                    inventory.entries[0].revision == 1U &&
+                    inventory.entries[0].status == (DAWN_ACPI_CHILD_TABLE_HEADER_VALID | DAWN_ACPI_CHILD_TABLE_CHECKSUM_VALID) &&
+                    inventory.entries[1].signature[0] == 'M' && inventory.entries[1].signature[3] == 'G',
+                "child records retain address signature length revision and checksum state")) {
+        return 1;
+    }
+    child_mcfg[9] = (uint8_t)(child_mcfg[9] + 1U);
+    if (!expect(dawn_acpi_child_table_inventory(&metadata, identity_reader, (void *)0, &inventory) &&
+                    inventory.entries[1].status == DAWN_ACPI_CHILD_TABLE_HEADER_VALID,
+                "invalid child checksum is recorded without payload parsing")) {
+        return 1;
+    }
+    make_root_table(xsdt_capacity, sizeof(xsdt_capacity), xsdt_signature);
+    make_valid_rsdp_v2(rsdp);
+    write_u64_le(&rsdp[24], (uint64_t)(uintptr_t)xsdt_capacity);
+    apply_checksum(rsdp, 20U, 8U);
+    apply_checksum(rsdp, 36U, 32U);
+    if (!expect(dawn_acpi_root_table_describe(rsdp, &metadata) &&
+                    dawn_acpi_child_table_inventory(&metadata, identity_reader, (void *)0, &inventory) &&
+                    inventory.entry_count == DAWN_ACPI_CHILD_TABLE_CAPACITY && inventory.omitted_entry_count == 1U,
+                "child inventory reports bounded capacity omission")) {
         return 1;
     }
     make_valid_rsdp_v2(rsdp);

@@ -41,6 +41,33 @@ static void pulse_debug_exit(void) {
     __asm__ volatile("outl %0, %w1" : : "a"(0), "d"((uint16_t)0x0f4));
 }
 
+static int pulse_acpi_read_lower_4g(
+    uint64_t physical_address, uint32_t byte_count, uint8_t *destination, void *reader_context) {
+    const uint8_t *source;
+    uint32_t index;
+
+    (void)reader_context;
+    if (destination == (void *)0 || physical_address > UINT32_MAX ||
+        physical_address + byte_count < physical_address || physical_address + byte_count > UINT64_C(0x100000000)) {
+        return 0;
+    }
+    source = (const uint8_t *)(uintptr_t)physical_address;
+    for (index = 0U; index < byte_count; ++index) {
+        destination[index] = source[index];
+    }
+    return 1;
+}
+
+static int pulse_acpi_child_table_inventory_probe(const DAWN_CONTEXT *context) {
+    DAWN_ACPI_ROOT_TABLE_METADATA root_table;
+    DAWN_ACPI_CHILD_TABLE_INVENTORY inventory;
+
+    return context != (void *)0 &&
+           dawn_acpi_root_table_describe((const void *)(uintptr_t)context->acpi_rsdp_physical_address, &root_table) &&
+           dawn_acpi_child_table_inventory(&root_table, pulse_acpi_read_lower_4g, (void *)0, &inventory) &&
+           inventory.entry_count != 0U;
+}
+
 static int pulse_context_is_valid(const DAWN_CONTEXT *context) {
     DAWN_ACPI_ROOT_TABLE_METADATA root_table;
 
@@ -78,7 +105,8 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         second_frame == first_frame + 4096U && pulse_paging_initialize() &&
         pulse_interrupts_initialize() && prism_canvas_runtime_probe(context) && horizon_runtime_probe() &&
         horizon_input_runtime_probe() && origin_runtime_probe() && vaultfs_runtime_probe() &&
-        vibe_session_runtime_probe() && parcel_runtime_probe() && atlas_keyboard_runtime_probe() && atlas_pci_runtime_probe()) {
+        vibe_session_runtime_probe() && parcel_runtime_probe() && atlas_keyboard_runtime_probe() && atlas_pci_runtime_probe() &&
+        pulse_acpi_child_table_inventory_probe(context)) {
         pulse_debug_write("ORIGIN: delegated key verified\n");
         pulse_debug_write("VAULT: redundant superblock recovered\n");
         pulse_debug_write("VAULT: journal commit verified\n");
@@ -95,6 +123,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         pulse_debug_write("ATLAS: PCI resource inventory verified\n");
         pulse_debug_write("DAWN: ACPI RSDP handoff verified\n");
         pulse_debug_write("DAWN: ACPI root table metadata verified\n");
+        pulse_debug_write("DAWN: ACPI child table inventory verified\n");
         pulse_scheduler_initialize();
         if (!pulse_scheduler_create_ready_task(&first_task) ||
             !pulse_scheduler_create_ready_task(&second_task) ||

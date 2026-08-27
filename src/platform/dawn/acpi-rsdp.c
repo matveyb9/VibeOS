@@ -31,6 +31,47 @@ static uint64_t dawn_acpi_read_u64_le(const uint8_t *bytes) {
     return value;
 }
 
+static void dawn_acpi_child_inventory_initialize(DAWN_ACPI_CHILD_TABLE_INVENTORY *inventory) {
+    uint32_t entry_index;
+    uint32_t byte_index;
+
+    inventory->entry_count = 0U;
+    inventory->omitted_entry_count = 0U;
+    for (entry_index = 0U; entry_index < DAWN_ACPI_CHILD_TABLE_CAPACITY; ++entry_index) {
+        inventory->entries[entry_index].physical_address = 0U;
+        inventory->entries[entry_index].byte_size = 0U;
+        inventory->entries[entry_index].revision = 0U;
+        inventory->entries[entry_index].status = 0U;
+        for (byte_index = 0U; byte_index < 4U; ++byte_index) {
+            inventory->entries[entry_index].signature[byte_index] = 0U;
+        }
+    }
+}
+
+static int dawn_acpi_reader_checksum_is_zero(
+    uint64_t physical_address, uint32_t byte_size, DAWN_ACPI_PHYSICAL_READER reader, void *reader_context) {
+    uint8_t bytes[64];
+    uint8_t checksum = 0U;
+    uint32_t remaining = byte_size;
+    uint32_t offset = 0U;
+    uint32_t chunk_size;
+    uint32_t index;
+
+    while (remaining != 0U) {
+        chunk_size = remaining > sizeof(bytes) ? (uint32_t)sizeof(bytes) : remaining;
+        if (physical_address + offset < physical_address ||
+            !reader(physical_address + offset, chunk_size, bytes, reader_context)) {
+            return 0;
+        }
+        for (index = 0U; index < chunk_size; ++index) {
+            checksum = (uint8_t)(checksum + bytes[index]);
+        }
+        offset += chunk_size;
+        remaining -= chunk_size;
+    }
+    return checksum == 0U;
+}
+
 int dawn_acpi_rsdp_is_valid(const void *physical_rsdp) {
     static const uint8_t signature[8] = {'R', 'S', 'D', ' ', 'P', 'T', 'R', ' '};
     const uint8_t *rsdp = physical_rsdp;
@@ -109,5 +150,63 @@ int dawn_acpi_root_table_describe(const void *physical_rsdp, DAWN_ACPI_ROOT_TABL
     metadata->byte_size = root_table_length;
     metadata->entry_count = (root_table_length - DAWN_ACPI_TABLE_HEADER_LENGTH) / entry_width;
     metadata->kind = root_kind;
+    return 1;
+}
+
+int dawn_acpi_child_table_inventory(
+    const DAWN_ACPI_ROOT_TABLE_METADATA *root,
+    DAWN_ACPI_PHYSICAL_READER reader,
+    void *reader_context,
+    DAWN_ACPI_CHILD_TABLE_INVENTORY *inventory) {
+    uint8_t entry_bytes[8];
+    uint8_t header[DAWN_ACPI_TABLE_HEADER_LENGTH];
+    uint32_t entry_width;
+    uint32_t retained_count;
+    uint32_t entry_index;
+    uint32_t header_length;
+    uint32_t signature_index;
+    uint64_t entry_address;
+    uint64_t child_address;
+    DAWN_ACPI_CHILD_TABLE_METADATA *entry;
+
+    if (root == (const void *)0 || reader == (void *)0 || inventory == (void *)0 ||
+        root->byte_size < DAWN_ACPI_TABLE_HEADER_LENGTH || root->entry_count == 0U ||
+        (root->kind != DAWN_ACPI_ROOT_TABLE_RSDT && root->kind != DAWN_ACPI_ROOT_TABLE_XSDT)) {
+        return 0;
+    }
+    entry_width = root->kind == DAWN_ACPI_ROOT_TABLE_XSDT ? 8U : 4U;
+    if (((root->byte_size - DAWN_ACPI_TABLE_HEADER_LENGTH) / entry_width) != root->entry_count) {
+        return 0;
+    }
+    dawn_acpi_child_inventory_initialize(inventory);
+    retained_count = root->entry_count > DAWN_ACPI_CHILD_TABLE_CAPACITY ?
+                         DAWN_ACPI_CHILD_TABLE_CAPACITY : root->entry_count;
+    inventory->omitted_entry_count = root->entry_count - retained_count;
+    for (entry_index = 0U; entry_index < retained_count; ++entry_index) {
+        entry_address = root->physical_address + DAWN_ACPI_TABLE_HEADER_LENGTH + ((uint64_t)entry_index * entry_width);
+        if (entry_address < root->physical_address || !reader(entry_address, entry_width, entry_bytes, reader_context)) {
+            return 0;
+        }
+        child_address = entry_width == 8U ? dawn_acpi_read_u64_le(entry_bytes) : dawn_acpi_read_u32_le(entry_bytes);
+        entry = &inventory->entries[entry_index];
+        entry->physical_address = child_address;
+        ++inventory->entry_count;
+        if (child_address == 0U || !reader(child_address, sizeof(header), header, reader_context)) {
+            continue;
+        }
+        header_length = dawn_acpi_read_u32_le(&header[4]);
+        if (header_length < DAWN_ACPI_TABLE_HEADER_LENGTH || header_length > DAWN_ACPI_ROOT_TABLE_MAXIMUM_LENGTH) {
+            continue;
+        }
+        for (signature_index = 0U; signature_index < 4U; ++signature_index) {
+            entry->signature[signature_index] = header[signature_index];
+        }
+        entry->byte_size = header_length;
+        entry->revision = header[8];
+        entry->status = DAWN_ACPI_CHILD_TABLE_HEADER_VALID;
+        if (dawn_acpi_reader_checksum_is_zero(child_address, header_length, reader, reader_context)) {
+            entry->status |= DAWN_ACPI_CHILD_TABLE_CHECKSUM_VALID;
+        }
+    }
     return 1;
 }
