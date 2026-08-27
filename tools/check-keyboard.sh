@@ -61,6 +61,18 @@ if [[ ! -S "$monitor_socket" ]] || ! grep -Fqx "ATLAS: keyboard irq probe ready"
     [[ -f "$debug_log" ]] && cat "$debug_log" >&2
     exit 1
 fi
+printf 'sendkey right\n' | socat - UNIX-CONNECT:"$monitor_socket" >/dev/null
+for _ in $(seq 1 100); do
+    if grep -Fqx "HORIZON: keyboard focus redrawn" "$debug_log"; then
+        break
+    fi
+    sleep 0.05
+done
+if [[ ! -S "$monitor_socket" ]] || ! grep -Fqx "HORIZON: keyboard focus redrawn" "$debug_log"; then
+    echo "Keyboard probe never redrew focus after the first event." >&2
+    cat "$debug_log" >&2
+    exit 1
+fi
 printf 'sendkey ret\n' | socat - UNIX-CONNECT:"$monitor_socket" >/dev/null
 
 set +e

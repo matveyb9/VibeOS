@@ -139,6 +139,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         PRISM_FRAMEBUFFER framebuffer;
         HORIZON_DESKTOP_RUNTIME desktop_runtime;
         HORIZON_DESKTOP_RUNTIME_STEP_RESULT desktop_step;
+        uint32_t keyboard_redraw_count = 0U;
 
         if (!prism_framebuffer_from_dawn(context, &framebuffer) ||
             !horizon_desktop_runtime_initialize(&framebuffer, &desktop_runtime)) {
@@ -158,8 +159,13 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
                 pulse_debug_exit();
             }
             if (desktop_step.redraw_performed != 0U) {
-                pulse_debug_write("HORIZON: keyboard focus redrawn\n");
-                pulse_debug_exit();
+                ++keyboard_redraw_count;
+                if (keyboard_redraw_count == 1U) {
+                    pulse_debug_write("HORIZON: keyboard focus redrawn\n");
+                } else if (keyboard_redraw_count == 2U) {
+                    pulse_debug_write("HORIZON: keyboard selection redrawn\n");
+                    pulse_debug_exit();
+                }
             }
         }
 #else

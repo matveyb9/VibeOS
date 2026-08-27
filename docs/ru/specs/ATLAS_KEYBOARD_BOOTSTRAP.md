@@ -19,7 +19,7 @@
 | Hardware I/O | Отдельный constrained i8042 adapter читает data только после output-ready status и подтверждает PIC IRQ1 |
 | Consumption | `atlas_keyboard_next_event()` возвращает FIFO event, не раскрывая queue state |
 
-Host probe проверяет FIFO ordering, key-up preservation, bounded prefix handling, точный count, semantic Tab/Enter/Left/Right decoding, Shift state snapshot и overflow rejection. Отдельный QEMU profile загружается до IRQ1-ready state, inject Right Arrow через QEMU monitor и проверяет end-to-end controlled transition: IRQ1 помещает event в queue и возвращается, затем profile-owned pump Horizon потребляет его и перерисовывает focus. Сам IRQ adapter остаётся независимым от Horizon и никогда не рендерит и не завершает QEMU. USB HID, mouse input, ACPI resource discovery, international layout, repeat, lock state, другие modifier и extended key вне Left/Right намеренно выходят за bootstrap.
+Host probe проверяет FIFO ordering, key-up preservation, bounded prefix handling, точный count, semantic Tab/Enter/Left/Right decoding, Shift state snapshot и overflow rejection. Отдельный QEMU profile загружается до IRQ1-ready state, inject Right Arrow, затем Enter через QEMU monitor и проверяет controlled two-event transition: каждый IRQ1 только помещает event в queue и возвращается; profile-owned runtime Horizon потребляет первый event для redraw focus, затем второй для redraw selection. Сам IRQ adapter остаётся независимым от Horizon и никогда не рендерит и не завершает QEMU. USB HID, mouse input, ACPI resource discovery, international layout, repeat, lock state, другие modifier и extended key вне Left/Right намеренно выходят за bootstrap.
 
 ## Источник
 
