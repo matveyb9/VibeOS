@@ -15,11 +15,11 @@
 | Text | Uppercase Latin letter и space; unsupported key сохраняет zero ASCII value |
 | Semantic key | Явные `ATLAS_KEY_TAB` и `ATLAS_KEY_ENTER` сохраняют non-text desktop intent рядом с raw scan code и optional text |
 | Modifier | Bounded Shift bit отслеживается по Set-1 left/right Shift make и break code и snapshot в каждом queued event |
-| Extended prefix | Отложены: `0xe0` и `0xe1` намеренно не классифицируются как key |
+| Extended prefix | Один pending `0xe0` prefix потребляется следующим code для decode Left/Right arrow; `0xe1` по-прежнему очищает pending prefix и отложен |
 | Hardware I/O | Отдельный constrained i8042 adapter читает data только после output-ready status и подтверждает PIC IRQ1 |
 | Consumption | `atlas_keyboard_next_event()` возвращает FIFO event, не раскрывая queue state |
 
-Host probe проверяет FIFO ordering, key-up preservation, prefix deferral, точный count, semantic Tab/Enter decoding, Shift state snapshot и overflow rejection. Отдельный QEMU profile загружается до IRQ1-ready state, inject Tab через QEMU monitor и проверяет end-to-end controlled transition: IRQ1 помещает event в queue и возвращается, затем profile-owned pump Horizon потребляет его и перерисовывает focus. Сам IRQ adapter остаётся независимым от Horizon и никогда не рендерит и не завершает QEMU. USB HID, mouse input, ACPI resource discovery, international layout, repeat, lock state, другие modifier, extended key и общий user-space focus policy намеренно выходят за bootstrap.
+Host probe проверяет FIFO ordering, key-up preservation, bounded prefix handling, точный count, semantic Tab/Enter/Left/Right decoding, Shift state snapshot и overflow rejection. Отдельный QEMU profile загружается до IRQ1-ready state, inject Right Arrow через QEMU monitor и проверяет end-to-end controlled transition: IRQ1 помещает event в queue и возвращается, затем profile-owned pump Horizon потребляет его и перерисовывает focus. Сам IRQ adapter остаётся независимым от Horizon и никогда не рендерит и не завершает QEMU. USB HID, mouse input, ACPI resource discovery, international layout, repeat, lock state, другие modifier и extended key вне Left/Right намеренно выходят за bootstrap.
 
 ## Источник
 

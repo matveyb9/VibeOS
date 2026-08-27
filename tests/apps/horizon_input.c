@@ -37,6 +37,18 @@ int main(void) {
         !expect(horizon_input_apply_event(&state, &(ATLAS_KEY_EVENT){UINT8_C(0x1c), 1U, '\0', ATLAS_KEY_ENTER, ATLAS_KEY_NONE}, &handled) &&
                     handled == 1U && state.selected_window == 0U,
                 "Enter press selects focused window") ||
+        !expect(horizon_input_apply_event(
+                    &state,
+                    &(ATLAS_KEY_EVENT){UINT8_C(0x4d), 1U, '\0', ATLAS_KEY_ARROW_RIGHT, ATLAS_KEY_NONE},
+                    &handled) &&
+                    handled == 1U && state.focused_window == 1U,
+                "Right arrow press advances focus") ||
+        !expect(horizon_input_apply_event(
+                    &state,
+                    &(ATLAS_KEY_EVENT){UINT8_C(0x4b), 1U, '\0', ATLAS_KEY_ARROW_LEFT, ATLAS_KEY_NONE},
+                    &handled) &&
+                    handled == 1U && state.focused_window == 0U,
+                "Left arrow press moves focus backward") ||
         !expect(horizon_input_apply_event(&state, &(ATLAS_KEY_EVENT){UINT8_C(0x23), 1U, 'H', ATLAS_KEY_NONE, ATLAS_KEY_NONE}, &handled) &&
                     handled == 0U && state.selected_window == 0U,
                 "unmapped press is ignored") ||

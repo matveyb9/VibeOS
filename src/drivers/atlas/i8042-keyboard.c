@@ -13,6 +13,7 @@ typedef struct {
     uint32_t write_index;
     uint32_t event_count;
     uint8_t modifiers;
+    uint8_t extended_prefix_pending;
 } ATLAS_KEYBOARD_QUEUE;
 
 static ATLAS_KEYBOARD_QUEUE early_keyboard_queue;
@@ -60,6 +61,16 @@ static ATLAS_KEY atlas_keyboard_key_from_set_1(uint8_t make_code) {
     return ATLAS_KEY_NONE;
 }
 
+static ATLAS_KEY atlas_keyboard_extended_key_from_set_1(uint8_t make_code) {
+    if (make_code == UINT8_C(0x4b)) {
+        return ATLAS_KEY_ARROW_LEFT;
+    }
+    if (make_code == UINT8_C(0x4d)) {
+        return ATLAS_KEY_ARROW_RIGHT;
+    }
+    return ATLAS_KEY_NONE;
+}
+
 static int atlas_keyboard_is_shift_set_1(uint8_t make_code) {
     return make_code == UINT8_C(0x2a) || make_code == UINT8_C(0x36);
 }
@@ -77,14 +88,19 @@ void atlas_keyboard_initialize(void) {
     early_keyboard_queue.write_index = 0U;
     early_keyboard_queue.event_count = 0U;
     early_keyboard_queue.modifiers = 0U;
+    early_keyboard_queue.extended_prefix_pending = 0U;
 }
 
 int atlas_keyboard_receive_scancode(uint8_t scancode) {
     ATLAS_KEY_EVENT *event;
     uint8_t make_code;
 
-    if (scancode == UINT8_C(0xe0) || scancode == UINT8_C(0xe1) ||
-        early_keyboard_queue.event_count >= ATLAS_KEYBOARD_QUEUE_CAPACITY) {
+    if (scancode == UINT8_C(0xe0)) {
+        early_keyboard_queue.extended_prefix_pending = 1U;
+        return 0;
+    }
+    if (scancode == UINT8_C(0xe1) || early_keyboard_queue.event_count >= ATLAS_KEYBOARD_QUEUE_CAPACITY) {
+        early_keyboard_queue.extended_prefix_pending = 0U;
         return 0;
     }
     event = &early_keyboard_queue.events[early_keyboard_queue.write_index];
@@ -99,8 +115,10 @@ int atlas_keyboard_receive_scancode(uint8_t scancode) {
         }
     }
     event->ascii = atlas_keyboard_decode_set_1(make_code);
-    event->key = atlas_keyboard_key_from_set_1(make_code);
+    event->key = early_keyboard_queue.extended_prefix_pending != 0U ?
+                     atlas_keyboard_extended_key_from_set_1(make_code) : atlas_keyboard_key_from_set_1(make_code);
     event->modifiers = early_keyboard_queue.modifiers;
+    early_keyboard_queue.extended_prefix_pending = 0U;
     early_keyboard_queue.write_index =
         (early_keyboard_queue.write_index + 1U) % ATLAS_KEYBOARD_QUEUE_CAPACITY;
     ++early_keyboard_queue.event_count;

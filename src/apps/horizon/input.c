@@ -19,6 +19,10 @@ int horizon_input_apply_event(
     if (event->key == ATLAS_KEY_TAB) {
         action = (event->modifiers & ATLAS_KEY_MODIFIER_SHIFT) != 0U ?
                      HORIZON_DESKTOP_ACTION_FOCUS_PREVIOUS : HORIZON_DESKTOP_ACTION_FOCUS_NEXT;
+    } else if (event->key == ATLAS_KEY_ARROW_LEFT) {
+        action = HORIZON_DESKTOP_ACTION_FOCUS_PREVIOUS;
+    } else if (event->key == ATLAS_KEY_ARROW_RIGHT) {
+        action = HORIZON_DESKTOP_ACTION_FOCUS_NEXT;
     } else if (event->key == ATLAS_KEY_ENTER) {
         action = HORIZON_DESKTOP_ACTION_SELECT_FOCUSED;
     } else {
