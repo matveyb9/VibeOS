@@ -4,19 +4,19 @@
 
 # Bootstrap Prism и Canvas
 
-**Статус:** Реализован как ранний x86_64 UEFI software-rendering path. Это ещё не user-space compositor, запланированный для VibeOS v1.0.
+**Статус:** Реализован как ранний x86_64 software-rendering path в QEMU UEFI и Legacy BIOS profile. Это ещё не user-space compositor, запланированный для VibeOS v1.0.
 
-Prelude запрашивает firmware Graphics Output Protocol до выхода из Boot Services и добавляет base активного framebuffer, размер, dimensions, scan-line stride и RGBX/BGRX format в append-only Dawn Context v2. После захвата `CR3` Pulse проверяет descriptor; его временный identity map на четыре ГиБ охватывает QEMU framebuffer range. GOP предоставляет framebuffer, управляемый display output, а также pixel format и scan-line information.[1]
+UEFI Prelude запрашивает firmware Graphics Output Protocol до выхода из Boot Services; Legacy BIOS Prelude выбирает VBE linear mode, пока доступны BIOS service. Оба producer добавляют base активного framebuffer, размер, dimensions, scan-line stride и format `RGBX8888`, `BGRX8888` или `BGR888` в append-only Dawn Context v3. После захвата `CR3` Pulse проверяет descriptor; его временный identity map на четыре ГиБ охватывает QEMU framebuffer range. GOP предоставляет framebuffer, управляемый display output, а также pixel format и scan-line information.[1]
 
 | Слой | Начальная ответственность |
 |---|---|
-| Prelude | Получить current GOP framebuffer information до `ExitBootServices()` |
-| Dawn Context v2 | Передать physical framebuffer descriptor без передачи live UEFI service |
+| Prelude | Получить GOP information до `ExitBootServices()` или выбрать Legacy BIOS VBE linear mode до firmware handoff |
+| Dawn Context v3 | Передать physical framebuffer descriptor без передачи live UEFI или BIOS service |
 | Prism | Проверить framebuffer и software-fill clipped RGB rectangle |
 | Canvas | Хранить и рендерить bounded ordered rectangle и uppercase bitmap label |
 | Pulse probe | Нарисовать dark background и три overlapping visual block до timer verification |
 
-Host-тест проверяет descriptor handling, clipping, BGR pixel packing, draw order, uppercase bitmap label и retained-scene rendering. QEMU probe подтверждает выполнение software paint path до доставки external timer. Следующая работа отделит Prism в user space, создаст surface и window composition, добавит scalable text и input, подключит display driver через Atlas и уберёт временный broad identity map.
+Host-тест проверяет descriptor handling, clipping, byte packing `BGR888`, draw order, uppercase bitmap label и retained-scene rendering. QEMU UEFI и Legacy BIOS probe подтверждают выполнение software paint path до доставки external timer. Следующая работа отделит Prism в user space, создаст surface и window composition, добавит scalable text и input, подключит display driver через Atlas и уберёт временный broad identity map.
 
 ## Источник
 

@@ -16,8 +16,17 @@ static int expect(int condition, const char *message) {
 
 int main(void) {
     uint32_t pixels[48] = {0};
+    uint8_t pixels_bgr888[18] = {0};
     DAWN_CONTEXT context = {0};
     PRISM_FRAMEBUFFER framebuffer;
+    PRISM_FRAMEBUFFER framebuffer_bgr888 = {
+        pixels_bgr888,
+        sizeof(pixels_bgr888),
+        2U,
+        3U,
+        2U,
+        DAWN_PIXEL_FORMAT_BGR888,
+    };
     CANVAS_SCENE scene;
 
     context.framebuffer_physical_address = (uint64_t)(uintptr_t)pixels;
@@ -34,7 +43,10 @@ int main(void) {
                     "BGR framebuffer stores expected packed color") ||
         !expect(prism_fill_rect(&framebuffer, 5U, 7U, 2U, 2U, UINT32_C(0xabcdef)),
                     "Prism clips out-of-bounds rectangle") ||
-        !expect(pixels[47] == UINT32_C(0xabcdef), "clipped pixel reaches final framebuffer cell")) {
+        !expect(pixels[47] == UINT32_C(0xabcdef), "clipped pixel reaches final framebuffer cell") ||
+        !expect(prism_fill_rect(&framebuffer_bgr888, 0U, 0U, 1U, 1U, UINT32_C(0x123456)) &&
+                    pixels_bgr888[0] == UINT8_C(0x56) && pixels_bgr888[1] == UINT8_C(0x34) &&
+                    pixels_bgr888[2] == UINT8_C(0x12), "Prism stores BGR888 framebuffer pixels")) {
         return 1;
     }
 

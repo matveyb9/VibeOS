@@ -28,7 +28,8 @@ typedef struct {
 
 typedef enum {
     DAWN_PIXEL_FORMAT_RGBX8888 = 1,
-    DAWN_PIXEL_FORMAT_BGRX8888 = 2
+    DAWN_PIXEL_FORMAT_BGRX8888 = 2,
+    DAWN_PIXEL_FORMAT_BGR888 = 3
 } DAWN_PIXEL_FORMAT;
 
 typedef struct {

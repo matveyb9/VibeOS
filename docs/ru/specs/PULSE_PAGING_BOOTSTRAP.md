@@ -4,7 +4,7 @@
 
 # Bootstrap paging Pulse x86_64
 
-**Статус:** Реализован и проверен в начальном профиле x86_64 QEMU UEFI.
+**Статус:** Реализован и проверен в профилях x86_64 QEMU UEFI и Legacy BIOS.
 
 После создания собственного stack и раннего physical-frame source Pulse формирует four-level page-table hierarchy и загружает свой адрес PML4 в `CR3`. Intel System Programming Guide описывает four-level paging, root `CR3`, paging-structure entry и их translation semantics.[1]
 
@@ -20,7 +20,7 @@
 | Permissions | Present и writable; executable, пока действует ранний bootstrap |
 | LA57 | Явно отклоняется в этой первой four-level implementation |
 
-Identity range четырёх ГиБ сохраняет доступ к Pulse на 2 МиБ, Dawn Context, раннему stack, активным page table, low I/O layout QEMU и firmware framebuffer range для первой Prism software-renderer milestone. Он намеренно широк и включает region, которые будущие mapping Pulse классифицируют как RAM или MMIO до применения более узких permissions.
+Identity range четырёх ГиБ сохраняет доступ к Pulse на 2 МиБ, Dawn Context, раннему stack, активным page table, low I/O layout QEMU и firmware framebuffer range для первой Prism software-renderer milestone. Legacy BIOS producer резервирует первый MiB до того, как Pulse получает map, поэтому early frame allocator не может выбрать эти bootstrap-owned low-memory location. Mapping намеренно широк и включает region, которые будущие mapping Pulse классифицируют как RAM или MMIO до применения более узких permissions.
 
 ## Ограничения и следующее изменение
 

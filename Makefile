@@ -6,6 +6,7 @@ SHELL := /bin/bash
 BUILD_DIR ?= build
 PULSE_PROBE ?= timer
 PRELUDE_DIR := src/boot/prelude
+PRELUDE_BIOS_DIR := $(PRELUDE_DIR)/bios
 PULSE_DIR := src/kernel/pulse
 
 PRELUDE_OBJ := $(BUILD_DIR)/prelude/main.obj
@@ -54,13 +55,19 @@ PULSE_CANVAS_TEST := $(BUILD_DIR)/tests/pulse-canvas-bootstrap
 PULSE_HORIZON_TEST := $(BUILD_DIR)/tests/pulse-horizon-bootstrap
 PULSE_KEYBOARD_TEST := $(BUILD_DIR)/tests/pulse-keyboard-bootstrap
 ESP_IMAGE := $(BUILD_DIR)/vibeos-uefi-esp.img
+BIOS_STAGE1_BIN := $(BUILD_DIR)/prelude/bios/stage1.bin
+BIOS_STAGE2_BIN := $(BUILD_DIR)/prelude/bios/stage2.bin
+BIOS_IMAGE := $(BUILD_DIR)/vibeos-bios.img
 ESP_IMAGE_BYTES := 67108864
+PRELUDE_BIOS_STAGE2_SECTORS := 16
+PRELUDE_BIOS_PULSE_MAX_BYTES := 57344
 
 CLANG ?= clang
 LLD_LINK ?= lld-link
 LLD_LD ?= ld.lld
 LLVM_OBJCOPY ?= llvm-objcopy
 HOST_CC ?= cc
+NASM ?= nasm
 
 PRELUDE_CFLAGS := --target=x86_64-pc-windows-msvc -std=c17 -ffreestanding -fshort-wchar \
 	-fno-stack-protector -mno-red-zone -Wall -Wextra -Wpedantic -Werror \
@@ -74,7 +81,7 @@ PULSE_CFLAGS := --target=x86_64-unknown-elf -std=c17 -ffreestanding -fno-stack-p
 	-Isrc/apps/horizon/include
 PULSE_ASFLAGS := --target=x86_64-unknown-elf -ffreestanding -mno-red-zone
 
-.PHONY: all prelude pulse uefi-image check-uefi check-keyboard check-panic test test-panic clean
+.PHONY: all prelude pulse uefi-image bios-image check-uefi check-keyboard check-bios check-panic test test-bios test-panic clean
 
 all: uefi-image
 
@@ -83,6 +90,8 @@ prelude: $(PRELUDE_EFI)
 pulse: $(PULSE_ELF)
 
 uefi-image: $(ESP_IMAGE)
+
+bios-image: $(BIOS_IMAGE)
 
 $(PULSE_ENTRY_OBJ): $(PULSE_DIR)/entry/x86_64.S
 	@mkdir -p $(dir $@)
@@ -286,12 +295,34 @@ $(ESP_IMAGE): $(PRELUDE_EFI)
 	mmd -i $@ ::/EFI ::/EFI/BOOT
 	mcopy -i $@ $(PRELUDE_EFI) ::/EFI/BOOT/BOOTX64.EFI
 
+$(BIOS_STAGE1_BIN): $(PRELUDE_BIOS_DIR)/stage1.asm
+	@mkdir -p $(dir $@)
+	$(NASM) -f bin -DSTAGE2_SECTORS=$(PRELUDE_BIOS_STAGE2_SECTORS) $< -o $@
+
+$(BIOS_STAGE2_BIN): $(PRELUDE_BIOS_DIR)/stage2.asm $(PULSE_BIN) src/platform/dawn/include/dawn.h
+	@mkdir -p $(dir $@)
+	@pulse_bytes=$$(wc -c < $(PULSE_BIN)); \
+	if (( pulse_bytes > $(PRELUDE_BIOS_PULSE_MAX_BYTES) )); then \
+		echo "Pulse raw image exceeds Legacy BIOS staging capacity: $$pulse_bytes > $(PRELUDE_BIOS_PULSE_MAX_BYTES)" >&2; exit 1; \
+	fi; \
+	pulse_sectors=$$(( (pulse_bytes + 511) / 512 )); \
+	$(NASM) -f bin -DSTAGE2_SECTORS=$(PRELUDE_BIOS_STAGE2_SECTORS) -DPULSE_BYTES=$$pulse_bytes -DPULSE_SECTORS=$$pulse_sectors $< -o $@
+
+$(BIOS_IMAGE): $(BIOS_STAGE1_BIN) $(BIOS_STAGE2_BIN) $(PULSE_BIN)
+	dd if=/dev/zero of=$@ bs=512 count=32768
+	dd if=$(BIOS_STAGE1_BIN) of=$@ conv=notrunc
+	dd if=$(BIOS_STAGE2_BIN) of=$@ bs=512 seek=1 conv=notrunc
+	dd if=$(PULSE_BIN) of=$@ bs=512 seek=$$((1 + $(PRELUDE_BIOS_STAGE2_SECTORS))) conv=notrunc
+
 check-uefi: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "ATLAS: keyboard event queue verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
 
 check-keyboard:
 	$(MAKE) BUILD_DIR=build-keyboard PULSE_PROBE=keyboard uefi-image
 	tools/check-keyboard.sh build-keyboard/vibeos-uefi-esp.img "ATLAS: keyboard irq probe ready" "ATLAS: keyboard IRQ1 event handled"
+
+check-bios: $(BIOS_IMAGE)
+	tools/check-bios.sh $(BIOS_IMAGE) "PRELUDE BIOS: Dawn Context sealed" "PULSE: timer interrupt handled"
 
 check-panic: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE) "PULSE PANIC: unhandled interrupt"
@@ -311,11 +342,14 @@ test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TE
 	$(PULSE_HORIZON_TEST)
 	$(PULSE_KEYBOARD_TEST)
 	$(MAKE) check-keyboard
+	$(MAKE) check-bios
 	$(MAKE) BUILD_DIR=build-panic PULSE_PROBE=panic check-panic
 	tests/boot/check-prelude-artifact.sh $(ESP_IMAGE) $(PRELUDE_EFI) $(PULSE_ELF)
 
 test-panic:
 	$(MAKE) BUILD_DIR=build-panic PULSE_PROBE=panic check-panic
+
+test-bios: check-bios
 
 clean:
 	rm -rf $(BUILD_DIR)

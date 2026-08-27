@@ -4,54 +4,55 @@
 
 # VibeOS
 
-**VibeOS — независимая настольная операционная система, создаваемая с нуля.** Она рассчитана на энтузиастов, которым нужна практическая графическая система, и на тех, кто хочет изучать её устройство по исходному коду.
+**VibeOS — независимая графическая настольная операционная система, создаваемая с нуля на C17.** Она предназначена для энтузиастов, которым нужна практическая нативная система, и для читателей, которым полезно изучать явные интерфейсы, небольшие компоненты и парную документацию.
 
-VibeOS не является дистрибутивом Linux и не строится вокруг POSIX-совместимости. У неё будут собственные загрузчик, модель ядра, ABI приложений, библиотеки, формат пакетов, графический стек, аварийные режимы и платформа для разработчиков.
+VibeOS не является дистрибутивом Linux. Принятая архитектура намеренно начинается без POSIX profile, Linux ABI, Multiboot, GRUB и заимствованного runtime. Prelude — собственный загрузчик; Dawn Context — firmware-neutral handoff record; Pulse, Atlas, VaultFS, Prism, Canvas, Horizon, Parcel, Relay и Origin — нативные компоненты VibeOS.
 
 ## Текущий статус
 
-VibeOS находится на этапе **основания проекта**. Архитектура, принципы репозитория и начальная документация уже зафиксированы. Первый независимый x86_64 UEFI-образ Prelude собирается и проверяется в QEMU. Он уже получает UEFI memory map, завершает firmware Boot Services и передаёт `Dawn Context v1` раннему нативному образу Pulse.
+VibeOS находится на стадии **раннего platform bring-up**, а не является устанавливаемым релизом ОС. Воспроизводимый x86_64 QEMU path теперь достигает общего Pulse runtime через UEFI/OVMF и Legacy BIOS/SeaBIOS Prelude loader. Проверяемые probe охватывают нормализованные Dawn Context v3 memory descriptor, ранний identity map на четыре ГиБ, interrupt/timer handling, bootstrap physical allocator и scheduler state, native component probe и software-rendered вывод Prism/Canvas/Horizon.
 
-## Что создаётся
-
-Цель проекта — полноценная настольная среда: загрузчик `Prelude`, ядро `Pulse`, драйверы `Atlas`, хранилище `VaultFS`, композитор `Prism`, UI SDK `Canvas`, рабочий стол `Horizon`, пакеты `Parcel` и нативный SDK приложений.
-
-Первой стабильной целевой архитектурой станет x86_64. VibeOS проектируется для UEFI и legacy BIOS, а QEMU будет первой средой разработки и проверки.
+Legacy BIOS path использует двухэтапный собственный Prelude image, E820 normalization, VBE `0x118` linear output и framebuffer contract `BGR888`. Он проверен только в QEMU/SeaBIOS. Ни один из путей не является заявлением о совместимости с physical hardware, storage installation, user-space isolation, network support или полноте v1.0.
 
 ## Быстрый старт
 
-На поддерживаемой Linux host-системе с необходимым toolchain первый образ Prelude собирается и проверяется командой:
+На подготовленной development host-системе с нужным toolchain и QEMU запустите полный набор проверок:
 
 ```text
-make check-uefi
+make test
 ```
 
-Требования, создаваемые файлы и результат проверки описаны в руководстве [«Сборка и проверка Prelude на x86_64 UEFI»](docs/ru/guides/BUILD_X86_64_UEFI.md). Это экспериментальный bring-up-образ, а не устанавливаемый релиз операционной системы.
+Для отдельного firmware path используйте `make check-uefi` для UEFI/OVMF profile или `make check-bios` для Legacy BIOS/SeaBIOS profile. Руководства по сборке описывают требования к host-системе, создаваемые artifact и текущие границы проверки.
+
+| Цель | Руководство |
+|---|---|
+| Подготовить Linux, macOS или Windows development host | [Окружения host-систем](docs/ru/guides/HOST_ENVIRONMENTS.md) |
+| Собрать и проверить UEFI profile | [x86_64 UEFI](docs/ru/guides/BUILD_X86_64_UEFI.md) |
+| Собрать и проверить Legacy BIOS profile | [x86_64 Legacy BIOS](docs/ru/guides/BUILD_X86_64_BIOS.md) |
+
+## Что уже есть в bootstrap
+
+Текущее source tree содержит ранние ограниченные реализации opaque Key, Relay link и channel, Origin ABI v1, Atlas RAM и keyboard probe, VaultFS superblock/journal/A-B state, policy Session и Parcel, а также графический bootstrap Prism/Canvas/Horizon. Они задают интерфейсы и проверяемое поведение; это ещё не полная process model, driver ecosystem, persistent filesystem, package-signing system или desktop application suite, запланированные для VibeOS.
 
 ## Краткая дорожная карта
 
-Проект начинается с воспроизводимого toolchain и минимального пути загрузки. Затем развиваются ядро и IPC, хранилище и установка, нативный runtime и пакеты, графический рабочий стол, базовые приложения и, наконец, публичные alpha- и beta-линии.
+Следующая крупная работа превращает bootstrap в реальные platform facility: explicit physical-memory reservation и virtual-memory policy, hardware discovery и driver, durable VaultFS tree, isolated native process, compositor surface и input, затем установка системы и широкая платформа приложений. Отдельный публичный VibeSDK repository остаётся более поздней вехой.
 
-Полная последовательность и критерии готовности описаны в [упрощённой дорожной карте](docs/ru/ROADMAP.md).
+Последовательность и критерии готовности описаны в [дорожной карте](docs/ru/ROADMAP.md).
 
 ## Навигация по проекту
 
-- [Обзор архитектуры](docs/ru/ARCHITECTURE.md).
-- [Организация репозитория](docs/ru/REPOSITORY.md).
-- [Правила документации](docs/ru/DOCUMENTATION.md).
-- [Правила вкладов и рабочего процесса](docs/ru/CONTRIBUTING.md).
-- Первый [x86_64 UEFI-образ Prelude](docs/ru/guides/BUILD_X86_64_UEFI.md).
-- Настройка поддерживаемой [host-системы Prelude](docs/ru/guides/HOST_ENVIRONMENTS.md).
-- Контракт загрузки [Dawn Context v1](docs/ru/specs/DAWN_CONTEXT.md).
+- [Обзор архитектуры](docs/ru/ARCHITECTURE.md) и [организация репозитория](docs/ru/REPOSITORY.md).
+- [Dawn Context v3](docs/ru/specs/DAWN_CONTEXT.md), [bootstrap paging Pulse](docs/ru/specs/PULSE_PAGING_BOOTSTRAP.md) и [bootstrap Prism/Canvas](docs/ru/specs/PRISM_CANVAS_BOOTSTRAP.md).
+- [Правила документации](docs/ru/DOCUMENTATION.md) и [рабочий процесс вкладов](docs/ru/CONTRIBUTING.md).
 - Планируемая [платформа приложений и Vibe SDK](docs/ru/SDK.md).
-- [Дорожная карта](docs/ru/ROADMAP.md).
 
 ## Участие
 
-VibeOS готовится как открытый проект. Вклады будут проходить через короткие тематические ветки, reviewed Pull Request, структурированные коммиты и документацию, синхронизированную с кодом.
+VibeOS готовится как открытый проект. Изменения используют компактные тематические ветки, проверяемые Pull Request, короткие английские темы коммитов с двуязычным описанием и синхронную английскую/русскую документацию.
 
 Перед первым изменением прочтите [руководство по участию](docs/ru/CONTRIBUTING.md).
 
 ## Лицензия
 
-Лицензия проекта будет выбрана до принятия первого вклада с исходным кодом.
+Лицензия будет выбрана до принятия первого внешнего вклада с исходным кодом.

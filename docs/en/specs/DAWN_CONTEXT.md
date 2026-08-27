@@ -4,7 +4,7 @@
 
 # Dawn Context v3
 
-**Status:** Version 3 is implemented for the UEFI Prelude path. It is the portable contract that the separate Legacy BIOS Prelude path must also produce.
+**Status:** Version 3 is implemented by both the UEFI Prelude profile and the reproducible QEMU/SeaBIOS Legacy BIOS profile.
 
 > **Dawn Context** is the single immutable handoff record from Prelude to Pulse. It contains no callable firmware interface and uses physical addresses exclusively.
 
@@ -23,7 +23,7 @@ Version 3 replaces the UEFI memory-descriptor layout with a VibeOS-owned `DAWN_M
 | `memory_descriptor_size` | `uint64_t` | Must equal `sizeof(DAWN_MEMORY_DESCRIPTOR)`. |
 | `memory_descriptor_version` | `uint32_t` | Must equal `DAWN_MEMORY_DESCRIPTOR_VERSION`. |
 | `kernel_stack_top` / `kernel_stack_size` | `uint64_t` | Early Pulse stack location and byte capacity. |
-| framebuffer fields | mixed | Physical framebuffer address, byte size, dimensions, stride, and RGBX/BGRX format. |
+| framebuffer fields | mixed | Physical framebuffer address, byte size, dimensions, pixel stride, and `RGBX8888`, `BGRX8888`, or `BGR888` format. |
 
 | `DAWN_MEMORY_DESCRIPTOR` field | Meaning |
 |---|---|
@@ -32,7 +32,7 @@ Version 3 replaces the UEFI memory-descriptor layout with a VibeOS-owned `DAWN_M
 | `kind` | `DAWN_MEMORY_USABLE` or `DAWN_MEMORY_RESERVED`. Unknown source types become reserved. |
 | `attributes` | Reserved for future VibeOS-owned memory metadata; currently zero. |
 
-The UEFI producer obtains its map through `GetMemoryMap`, converts UEFI conventional memory to `DAWN_MEMORY_USABLE`, and conservatively marks every other descriptor as reserved before `ExitBootServices`.[1] A Legacy BIOS producer will map E820 usable entries to the same `DAWN_MEMORY_USABLE` kind and all other entries to reserved. Therefore Pulse consumes one architecture-neutral shape regardless of firmware path.
+The UEFI producer obtains its map through `GetMemoryMap`, converts UEFI conventional memory to `DAWN_MEMORY_USABLE`, and conservatively marks every other descriptor as reserved before `ExitBootServices`.[1] The Legacy BIOS producer maps E820 usable entries to the same `DAWN_MEMORY_USABLE` kind, reserves all other entries, and reserves the first MiB even when E820 describes it as RAM. That bootstrap reservation protects the active loader, Dawn Context, stack, VBE data, and transition page tables. The QEMU Legacy BIOS profile reports its VBE `0x118` linear framebuffer as `BGR888`; the format is carried by the same contract, not by a BIOS-specific side channel. Therefore Pulse consumes one architecture-neutral shape regardless of firmware path.
 
 ## Contract rules
 

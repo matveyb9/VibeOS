@@ -46,7 +46,8 @@ static int pulse_context_is_valid(const DAWN_CONTEXT *context) {
            context->framebuffer_byte_size != 0U && context->framebuffer_width != 0U &&
            context->framebuffer_height != 0U && context->framebuffer_pixels_per_scan_line >= context->framebuffer_width &&
            (context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_RGBX8888 ||
-            context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_BGRX8888);
+            context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_BGRX8888 ||
+            context->framebuffer_pixel_format == DAWN_PIXEL_FORMAT_BGR888);
 }
 
 __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
