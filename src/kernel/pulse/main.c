@@ -67,6 +67,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         pulse_debug_write("PARCEL: signed manifest policy verified\n");
         pulse_debug_write("PRISM: framebuffer painted\n");
         pulse_debug_write("CANVAS: retained scene rendered\n");
+        pulse_debug_write("HORIZON: desktop scene rendered\n");
         pulse_scheduler_initialize();
         if (!pulse_scheduler_create_ready_task(&first_task) ||
             !pulse_scheduler_create_ready_task(&second_task) ||
