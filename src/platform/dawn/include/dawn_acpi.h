@@ -79,12 +79,22 @@ typedef struct {
 } DAWN_ACPI_MADT_IO_APIC_METADATA;
 
 typedef struct {
+    uint8_t bus;
+    uint8_t source;
+    uint32_t global_system_interrupt;
+    uint16_t flags;
+} DAWN_ACPI_MADT_INTERRUPT_SOURCE_OVERRIDE_METADATA;
+
+typedef struct {
     DAWN_ACPI_MADT_LOCAL_APIC_METADATA local_apics[DAWN_ACPI_MADT_X86_RECORD_CAPACITY];
     DAWN_ACPI_MADT_IO_APIC_METADATA io_apics[DAWN_ACPI_MADT_X86_RECORD_CAPACITY];
+    DAWN_ACPI_MADT_INTERRUPT_SOURCE_OVERRIDE_METADATA interrupt_source_overrides[DAWN_ACPI_MADT_X86_RECORD_CAPACITY];
     uint32_t local_apic_count;
     uint32_t io_apic_count;
+    uint32_t interrupt_source_override_count;
     uint32_t omitted_local_apic_count;
     uint32_t omitted_io_apic_count;
+    uint32_t omitted_interrupt_source_override_count;
 } DAWN_ACPI_MADT_X86_INVENTORY;
 
 int dawn_acpi_rsdp_is_valid(const void *physical_rsdp);

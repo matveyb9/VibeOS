@@ -73,7 +73,7 @@ static void make_root_table(uint8_t *table, uint32_t length, const uint8_t signa
 static void make_madt(uint8_t *table) {
     static const uint8_t signature[4] = {'A', 'P', 'I', 'C'};
 
-    make_root_table(table, 64U, signature);
+    make_root_table(table, 74U, signature);
     write_u32_le(&table[36], UINT32_C(0xfee00000));
     write_u32_le(&table[40], 1U);
     table[44] = 0U;
@@ -86,7 +86,14 @@ static void make_madt(uint8_t *table) {
     table[54] = 2U;
     write_u32_le(&table[56], UINT32_C(0xfec00000));
     write_u32_le(&table[60], 32U);
-    apply_checksum(table, 64U, 9U);
+    table[64] = 2U;
+    table[65] = 10U;
+    table[66] = 0U;
+    table[67] = 0U;
+    write_u32_le(&table[68], 2U);
+    table[72] = 0x0dU;
+    table[73] = 0U;
+    apply_checksum(table, 74U, 9U);
 }
 
 static int identity_reader(uint64_t physical_address, uint32_t byte_count, uint8_t *destination, void *context) {
@@ -109,7 +116,7 @@ int main(void) {
     static uint8_t xsdt_children[52];
     static uint8_t xsdt_capacity[556];
     static uint8_t rsdt[44];
-    static uint8_t child_madt[64];
+    static uint8_t child_madt[74];
     static uint8_t child_mcfg[36];
     DAWN_ACPI_ROOT_TABLE_METADATA metadata;
     DAWN_ACPI_CHILD_TABLE_INVENTORY inventory;
@@ -193,22 +200,28 @@ int main(void) {
                     "valid MADT is inventoried") ||
         !expect(madt_inventory.byte_size == sizeof(child_madt) &&
                     madt_inventory.local_interrupt_controller_address == UINT32_C(0xfee00000) &&
-                    madt_inventory.flags == 1U && madt_inventory.entry_count == 2U &&
+                    madt_inventory.flags == 1U && madt_inventory.entry_count == 3U &&
                     madt_inventory.entries[0].type == 0U && madt_inventory.entries[0].length == 8U &&
-                    madt_inventory.entries[1].type == 1U && madt_inventory.entries[1].length == 12U,
+                    madt_inventory.entries[1].type == 1U && madt_inventory.entries[1].length == 12U &&
+                    madt_inventory.entries[2].type == 2U && madt_inventory.entries[2].length == 10U,
                     "MADT retains only fixed metadata and bounded entry headers")) {
         return 1;
     }
     if (!expect(dawn_acpi_madt_x86_inventory(&madt_inventory, identity_reader, (void *)0, &madt_x86_inventory),
                     "x86 MADT records are decoded") ||
         !expect(madt_x86_inventory.local_apic_count == 1U && madt_x86_inventory.io_apic_count == 1U &&
+                    madt_x86_inventory.interrupt_source_override_count == 1U &&
                     madt_x86_inventory.local_apics[0].acpi_processor_id == 7U &&
                     madt_x86_inventory.local_apics[0].local_apic_id == 1U &&
                     madt_x86_inventory.local_apics[0].flags == 1U &&
                     madt_x86_inventory.io_apics[0].io_apic_id == 2U &&
                     madt_x86_inventory.io_apics[0].io_apic_physical_address == UINT32_C(0xfec00000) &&
-                    madt_x86_inventory.io_apics[0].global_system_interrupt_base == 32U,
-                    "x86 decoder retains Local APIC and I/O APIC metadata only")) {
+                    madt_x86_inventory.io_apics[0].global_system_interrupt_base == 32U &&
+                    madt_x86_inventory.interrupt_source_overrides[0].bus == 0U &&
+                    madt_x86_inventory.interrupt_source_overrides[0].source == 0U &&
+                    madt_x86_inventory.interrupt_source_overrides[0].global_system_interrupt == 2U &&
+                    madt_x86_inventory.interrupt_source_overrides[0].flags == 0x0dU,
+                    "x86 decoder retains Local APIC, I/O APIC, and override metadata only")) {
         return 1;
     }
     child_madt[53] = 0U;
