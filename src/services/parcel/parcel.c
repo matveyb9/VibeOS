@@ -179,6 +179,11 @@ static uint16_t parcel_read_u16_le(const uint8_t *bytes) {
     return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
 }
 
+static uint32_t parcel_read_u32_le(const uint8_t *bytes) {
+    return (uint32_t)((uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
+                      ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U));
+}
+
 static uint64_t parcel_read_u64_le(const uint8_t *bytes) {
     uint64_t value = 0U;
     uint32_t index;
@@ -224,6 +229,55 @@ int parcel_elf64_header_describe(
     metadata->program_header_entry_size = program_header_entry_size;
     metadata->program_header_count = program_header_count;
     return 1;
+}
+
+int parcel_elf64_program_headers_describe(
+    const PARCEL_ELF64_HEADER_METADATA *header_metadata,
+    const uint8_t *program_headers,
+    uint32_t program_header_bytes,
+    PARCEL_ELF64_PROGRAM_HEADER_METADATA *metadata) {
+    uint32_t index;
+    uint64_t virtual_address;
+    uint64_t file_bytes;
+    uint64_t memory_bytes;
+    uint64_t virtual_end;
+    uint64_t alignment;
+
+    if (header_metadata == (const void *)0 || program_headers == (const void *)0 || metadata == (void *)0 ||
+        header_metadata->image_type != 2U || header_metadata->machine != 62U ||
+        header_metadata->program_header_entry_size != PARCEL_ELF64_PROGRAM_HEADER_BYTES ||
+        header_metadata->program_header_count == 0U ||
+        program_header_bytes < (uint32_t)header_metadata->program_header_count * PARCEL_ELF64_PROGRAM_HEADER_BYTES) {
+        return 0;
+    }
+    metadata->loadable_segment_count = 0U;
+    metadata->lowest_virtual_address = UINT64_MAX;
+    metadata->highest_virtual_address = 0U;
+    for (index = 0U; index < header_metadata->program_header_count; ++index) {
+        const uint8_t *entry = &program_headers[index * PARCEL_ELF64_PROGRAM_HEADER_BYTES];
+
+        if (parcel_read_u32_le(&entry[0]) != 1U || (parcel_read_u32_le(&entry[4]) & ~UINT32_C(7)) != 0U) {
+            return 0;
+        }
+        virtual_address = parcel_read_u64_le(&entry[16]);
+        file_bytes = parcel_read_u64_le(&entry[32]);
+        memory_bytes = parcel_read_u64_le(&entry[40]);
+        alignment = parcel_read_u64_le(&entry[48]);
+        if (file_bytes > memory_bytes || virtual_address > UINT64_MAX - memory_bytes ||
+            (alignment > 1U && ((alignment & (alignment - 1U)) != 0U ||
+                                (parcel_read_u64_le(&entry[8]) % alignment) != (virtual_address % alignment)))) {
+            return 0;
+        }
+        virtual_end = virtual_address + memory_bytes;
+        if (virtual_address < metadata->lowest_virtual_address) {
+            metadata->lowest_virtual_address = virtual_address;
+        }
+        if (virtual_end > metadata->highest_virtual_address) {
+            metadata->highest_virtual_address = virtual_end;
+        }
+        ++metadata->loadable_segment_count;
+    }
+    return metadata->loadable_segment_count != 0U;
 }
 
 int parcel_registry_admits_native_launch(

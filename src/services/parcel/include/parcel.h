@@ -12,6 +12,7 @@
 #define PARCEL_NATIVE_LAUNCH_REQUEST_VERSION UINT32_C(1)
 #define PARCEL_EXECUTABLE_IMAGE_DESCRIPTOR_VERSION UINT32_C(1)
 #define PARCEL_ELF64_HEADER_BYTES UINT32_C(64)
+#define PARCEL_ELF64_PROGRAM_HEADER_BYTES UINT32_C(56)
 
 typedef enum {
     PARCEL_SCOPE_CORE = 1,
@@ -77,6 +78,12 @@ typedef struct {
     uint16_t program_header_count;
 } PARCEL_ELF64_HEADER_METADATA;
 
+typedef struct {
+    uint32_t loadable_segment_count;
+    uint64_t lowest_virtual_address;
+    uint64_t highest_virtual_address;
+} PARCEL_ELF64_PROGRAM_HEADER_METADATA;
+
 void parcel_manifest_initialize(
     PARCEL_MANIFEST *manifest,
     const char *application_id,
@@ -104,6 +111,11 @@ int parcel_elf64_header_describe(
     const uint8_t *header,
     uint32_t header_bytes,
     PARCEL_ELF64_HEADER_METADATA *metadata);
+int parcel_elf64_program_headers_describe(
+    const PARCEL_ELF64_HEADER_METADATA *header_metadata,
+    const uint8_t *program_headers,
+    uint32_t program_header_bytes,
+    PARCEL_ELF64_PROGRAM_HEADER_METADATA *metadata);
 int parcel_runtime_probe(void);
 
 #endif

@@ -29,6 +29,8 @@ int main(void) {
     };
     uint8_t elf_header[PARCEL_ELF64_HEADER_BYTES] = {0};
     PARCEL_ELF64_HEADER_METADATA elf_metadata;
+    uint8_t elf_program_header[PARCEL_ELF64_PROGRAM_HEADER_BYTES] = {0};
+    PARCEL_ELF64_PROGRAM_HEADER_METADATA program_header_metadata;
     VIBE_KEY authority;
     VIBE_KEY read_only;
 
@@ -48,6 +50,14 @@ int main(void) {
     elf_header[52] = PARCEL_ELF64_HEADER_BYTES;
     elf_header[54] = 56U;
     elf_header[56] = 1U;
+    elf_program_header[0] = 1U;
+    elf_program_header[4] = 5U;
+    elf_program_header[8] = 0x40U;
+    elf_program_header[16] = 0x40U;
+    elf_program_header[17] = 0x40U;
+    elf_program_header[18] = 0x40U;
+    elf_program_header[32] = 16U;
+    elf_program_header[40] = 16U;
     parcel_manifest_initialize(
         &manifest,
         "org.vibe.cue",
@@ -120,6 +130,12 @@ int main(void) {
                     elf_metadata.program_header_entry_size == 56U && elf_metadata.program_header_count == 1U &&
                     elf_metadata.header_size == PARCEL_ELF64_HEADER_BYTES,
                     "bounded ELF64 header metadata is described") ||
+        !expect(parcel_elf64_program_headers_describe(
+                    &elf_metadata, elf_program_header, sizeof(elf_program_header), &program_header_metadata) &&
+                    program_header_metadata.loadable_segment_count == 1U &&
+                    program_header_metadata.lowest_virtual_address == UINT64_C(0x404040) &&
+                    program_header_metadata.highest_virtual_address == UINT64_C(0x404050),
+                    "bounded ELF64 loadable program-header metadata is described") ||
         !expect(origin_key_mint(PARCEL_REGISTRY_OBJECT, VIBE_RIGHT_READ | VIBE_RIGHT_WRITE, &authority),
                     "registry authority is minted") ||
         !expect(origin_key_narrow(authority, VIBE_RIGHT_READ, &read_only), "read-only child is minted") ||
@@ -147,11 +163,15 @@ int main(void) {
     request.signature_verified = 0;
     image.entry_offset = image.byte_count;
     elf_header[4] = 1U;
+    elf_program_header[0] = 2U;
     if (!expect(!parcel_registry_install(&registry, authority, &request),
                     "unverified manifest is rejected") ||
         !expect(!parcel_executable_image_descriptor_valid(&image), "out-of-range image entry offset is rejected") ||
         !expect(!parcel_elf64_header_describe(elf_header, sizeof(elf_header), &elf_metadata),
                     "non-ELF64 header is rejected") ||
+        !expect(!parcel_elf64_program_headers_describe(
+                    &elf_metadata, elf_program_header, sizeof(elf_program_header), &program_header_metadata),
+                    "non-loadable program header is rejected") ||
         !expect(parcel_native_launch_request_initialize(&launch_request, HORIZON_APPLICATION_VECTOR) &&
                     parcel_registry_admit_native_launch(&registry, &launch_request, &admission) &&
                     admission.status == PARCEL_NATIVE_LAUNCH_REJECTED_NOT_INSTALLED,
