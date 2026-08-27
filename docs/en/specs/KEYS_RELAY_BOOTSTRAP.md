@@ -21,3 +21,7 @@ The first authority model in VibeOS uses **opaque Key tokens** rather than ambie
 Relay now also offers a bounded in-kernel channel with eight FIFO slots. Sending a message asks the channel's Link to mint the recipient Key, so the queue carries a word together with a constrained capability rather than a copied authority record. The QEMU startup probe mints a read/write/inspect Key for object `1`, creates a Relay Link capped at `READ`, transfers a read-only child Key, verifies it, rejects an attempted `WRITE` transfer, then sends and receives a read-only Key through the channel.
 
 The model is intentionally local to the early kernel. Process-scoped key spaces, lifecycle inheritance, atomic concurrency, object destruction, blocking waits, and user-mode transport will be added as Pulse and Origin acquire process isolation.
+
+## Origin ABI bootstrap
+
+Origin now also exposes a versioned, plain-C call frame for two native operations: `INSPECT_KEY` and `NARROW_KEY`. The `ORIGIN_CALL` frame carries its ABI version, operation, input Key, requested rights, result fields, and explicit status. The current in-kernel probe uses it to create and verify an `INSPECT` Key. It is the source-level native contract from which the future user-mode Origin runtime and Vibe SDK bindings will grow; it is not a POSIX interface.

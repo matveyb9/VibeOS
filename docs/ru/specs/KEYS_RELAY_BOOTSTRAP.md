@@ -21,3 +21,7 @@
 Relay также предлагает bounded in-kernel channel из восьми FIFO slot. При отправке сообщения Link channel создаёт Key получателя, поэтому queue несёт word вместе с ограниченной capability, а не скопированный authority record. QEMU startup probe создаёт Key с `READ`/`WRITE`/`INSPECT` для object `1`, создаёт Relay Link с ограничением `READ`, передаёт read-only child Key, проверяет его, отклоняет попытку передачи `WRITE`, а затем отправляет и получает read-only Key через channel.
 
 Модель намеренно локальна для раннего kernel. Process-scoped key space, lifecycle inheritance, atomic concurrency, object destruction, blocking wait и user-mode transport появятся, когда Pulse и Origin получат process isolation.
+
+## Bootstrap Origin ABI
+
+Теперь Origin также предоставляет versioned plain-C call frame для двух native operation: `INSPECT_KEY` и `NARROW_KEY`. Frame `ORIGIN_CALL` содержит версию ABI, operation, input Key, requested rights, result field и явный status. Текущий in-kernel probe использует его, чтобы создать и проверить Key с `INSPECT`. Это source-level native contract, из которого вырастут будущие user-mode Origin runtime и Vibe SDK binding; это не POSIX interface.

@@ -5,6 +5,7 @@
 
 #include <keys.h>
 #include <origin.h>
+#include <origin_abi.h>
 #include <relay.h>
 
 static int expect(int condition, const char *message) {
@@ -24,6 +25,7 @@ int main(void) {
     RELAY_LINK link;
     RELAY_CHANNEL channel;
     RELAY_MESSAGE message;
+    ORIGIN_CALL call;
 
     origin_keys_reset();
     if (!expect(origin_key_mint(UINT64_C(42), VIBE_RIGHT_READ | VIBE_RIGHT_WRITE, &authority),
@@ -53,6 +55,45 @@ int main(void) {
         !expect(origin_key_inspect(message.key, &object_id, &rights) && rights == VIBE_RIGHT_READ,
                     "received key remains narrowed") ||
         !expect(!relay_channel_receive(&channel, &message), "empty channel rejects receive") ||
+        !expect(origin_abi_dispatch(&(ORIGIN_CALL){
+                    ORIGIN_ABI_VERSION,
+                    ORIGIN_OPERATION_NARROW_KEY,
+                    authority,
+                    VIBE_RIGHT_READ,
+                    0U,
+                    VIBE_KEY_INVALID,
+                    0U,
+                    0U,
+                    ORIGIN_STATUS_BAD_FRAME,
+                }), "native ABI accepts valid narrow call") ||
+        !expect(!origin_abi_dispatch(&(ORIGIN_CALL){
+                    ORIGIN_ABI_VERSION + 1U,
+                    ORIGIN_OPERATION_INSPECT_KEY,
+                    authority,
+                    0U,
+                    0U,
+                    VIBE_KEY_INVALID,
+                    0U,
+                    0U,
+                    ORIGIN_STATUS_BAD_FRAME,
+                }), "native ABI rejects incompatible version")) {
+        return 1;
+    }
+
+    call = (ORIGIN_CALL){
+        ORIGIN_ABI_VERSION,
+        ORIGIN_OPERATION_INSPECT_KEY,
+        authority,
+        0U,
+        0U,
+        VIBE_KEY_INVALID,
+        0U,
+        0U,
+        ORIGIN_STATUS_BAD_FRAME,
+    };
+    if (!expect(origin_abi_dispatch(&call) && call.status == ORIGIN_STATUS_OK &&
+                    call.output_object == UINT64_C(42),
+                "native ABI returns inspected object metadata") ||
         !expect(origin_runtime_probe(), "Origin runtime probe succeeds")) {
         return 1;
     }

@@ -1,6 +1,7 @@
 /* VibeOS Origin — early composition of Keys and Relay. */
 
 #include "origin.h"
+#include "origin_abi.h"
 
 #include <keys.h>
 #include <relay.h>
@@ -15,6 +16,7 @@ int origin_runtime_probe(void) {
     RELAY_LINK link;
     RELAY_CHANNEL channel;
     RELAY_MESSAGE message;
+    ORIGIN_CALL call;
 
     origin_keys_reset();
     if (!origin_key_mint(
@@ -31,6 +33,21 @@ int origin_runtime_probe(void) {
         !relay_channel_receive(&channel, &message) || message.word != UINT64_C(0x56494245) ||
         !origin_key_inspect(message.key, &object_id, &rights) ||
         object_id != ORIGIN_RUNTIME_PROBE_OBJECT || rights != VIBE_RIGHT_READ) {
+        return 0;
+    }
+
+    call.version = ORIGIN_ABI_VERSION;
+    call.operation = ORIGIN_OPERATION_NARROW_KEY;
+    call.input_key = authority_key;
+    call.requested_rights = VIBE_RIGHT_INSPECT;
+    call.reserved = 0;
+    call.output_key = VIBE_KEY_INVALID;
+    call.output_object = 0;
+    call.output_rights = 0;
+    call.status = ORIGIN_STATUS_BAD_FRAME;
+    if (!origin_abi_dispatch(&call) || call.status != ORIGIN_STATUS_OK ||
+        !origin_key_inspect(call.output_key, &object_id, &rights) ||
+        object_id != ORIGIN_RUNTIME_PROBE_OBJECT || rights != VIBE_RIGHT_INSPECT) {
         return 0;
     }
 
