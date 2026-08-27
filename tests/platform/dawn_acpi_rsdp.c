@@ -70,6 +70,19 @@ static void make_root_table(uint8_t *table, uint32_t length, const uint8_t signa
     apply_checksum(table, length, 9U);
 }
 
+static void make_madt(uint8_t *table) {
+    static const uint8_t signature[4] = {'A', 'P', 'I', 'C'};
+
+    make_root_table(table, 64U, signature);
+    write_u32_le(&table[36], UINT32_C(0xfee00000));
+    write_u32_le(&table[40], 1U);
+    table[44] = 0U;
+    table[45] = 8U;
+    table[52] = 1U;
+    table[53] = 12U;
+    apply_checksum(table, 64U, 9U);
+}
+
 static int identity_reader(uint64_t physical_address, uint32_t byte_count, uint8_t *destination, void *context) {
     const uint8_t *source = (const uint8_t *)(uintptr_t)physical_address;
     uint32_t index;
@@ -90,13 +103,13 @@ int main(void) {
     static uint8_t xsdt_children[52];
     static uint8_t xsdt_capacity[556];
     static uint8_t rsdt[44];
-    static uint8_t child_madt[36];
+    static uint8_t child_madt[64];
     static uint8_t child_mcfg[36];
     DAWN_ACPI_ROOT_TABLE_METADATA metadata;
     DAWN_ACPI_CHILD_TABLE_INVENTORY inventory;
+    DAWN_ACPI_MADT_INVENTORY madt_inventory;
     static const uint8_t xsdt_signature[4] = {'X', 'S', 'D', 'T'};
     static const uint8_t rsdt_signature[4] = {'R', 'S', 'D', 'T'};
-    static const uint8_t madt_signature[4] = {'A', 'P', 'I', 'C'};
     static const uint8_t mcfg_signature[4] = {'M', 'C', 'F', 'G'};
 
     make_valid_rsdp_v2(rsdp);
@@ -146,7 +159,7 @@ int main(void) {
                 "RSDT metadata retains 32-bit entry width")) {
         return 1;
     }
-    make_root_table(child_madt, sizeof(child_madt), madt_signature);
+    make_madt(child_madt);
     make_root_table(child_mcfg, sizeof(child_mcfg), mcfg_signature);
     make_root_table(xsdt_children, sizeof(xsdt_children), xsdt_signature);
     write_u64_le(&xsdt_children[36], (uint64_t)(uintptr_t)child_madt);
@@ -169,6 +182,23 @@ int main(void) {
                 "child records retain address signature length revision and checksum state")) {
         return 1;
     }
+    if (!expect(dawn_acpi_madt_inventory((uint64_t)(uintptr_t)child_madt, identity_reader, (void *)0, &madt_inventory),
+                    "valid MADT is inventoried") ||
+        !expect(madt_inventory.byte_size == sizeof(child_madt) &&
+                    madt_inventory.local_interrupt_controller_address == UINT32_C(0xfee00000) &&
+                    madt_inventory.flags == 1U && madt_inventory.entry_count == 2U &&
+                    madt_inventory.entries[0].type == 0U && madt_inventory.entries[0].length == 8U &&
+                    madt_inventory.entries[1].type == 1U && madt_inventory.entries[1].length == 12U,
+                    "MADT retains only fixed metadata and bounded entry headers")) {
+        return 1;
+    }
+    child_madt[53] = 0U;
+    apply_checksum(child_madt, sizeof(child_madt), 9U);
+    if (!expect(!dawn_acpi_madt_inventory((uint64_t)(uintptr_t)child_madt, identity_reader, (void *)0, &madt_inventory),
+                    "zero-length MADT entry is rejected")) {
+        return 1;
+    }
+    make_madt(child_madt);
     child_mcfg[9] = (uint8_t)(child_mcfg[9] + 1U);
     if (!expect(dawn_acpi_child_table_inventory(&metadata, identity_reader, (void *)0, &inventory) &&
                     inventory.entries[1].status == DAWN_ACPI_CHILD_TABLE_HEADER_VALID,

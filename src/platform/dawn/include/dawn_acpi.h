@@ -13,6 +13,8 @@
 #define DAWN_ACPI_TABLE_HEADER_LENGTH UINT32_C(36)
 #define DAWN_ACPI_ROOT_TABLE_MAXIMUM_LENGTH UINT32_C(65536)
 #define DAWN_ACPI_CHILD_TABLE_CAPACITY UINT32_C(64)
+#define DAWN_ACPI_MADT_FIXED_LENGTH UINT32_C(44)
+#define DAWN_ACPI_MADT_ENTRY_CAPACITY UINT32_C(64)
 
 #define DAWN_ACPI_CHILD_TABLE_HEADER_VALID UINT8_C(0x01)
 #define DAWN_ACPI_CHILD_TABLE_CHECKSUM_VALID UINT8_C(0x02)
@@ -46,6 +48,23 @@ typedef struct {
     uint32_t omitted_entry_count;
 } DAWN_ACPI_CHILD_TABLE_INVENTORY;
 
+typedef struct {
+    uint64_t physical_address;
+    uint32_t byte_size;
+    uint8_t type;
+    uint8_t length;
+} DAWN_ACPI_MADT_ENTRY_METADATA;
+
+typedef struct {
+    uint64_t physical_address;
+    uint32_t byte_size;
+    uint32_t local_interrupt_controller_address;
+    uint32_t flags;
+    DAWN_ACPI_MADT_ENTRY_METADATA entries[DAWN_ACPI_MADT_ENTRY_CAPACITY];
+    uint32_t entry_count;
+    uint32_t omitted_entry_count;
+} DAWN_ACPI_MADT_INVENTORY;
+
 int dawn_acpi_rsdp_is_valid(const void *physical_rsdp);
 int dawn_acpi_root_table_describe(const void *physical_rsdp, DAWN_ACPI_ROOT_TABLE_METADATA *metadata);
 int dawn_acpi_child_table_inventory(
@@ -53,5 +72,10 @@ int dawn_acpi_child_table_inventory(
     DAWN_ACPI_PHYSICAL_READER reader,
     void *reader_context,
     DAWN_ACPI_CHILD_TABLE_INVENTORY *inventory);
+int dawn_acpi_madt_inventory(
+    uint64_t physical_address,
+    DAWN_ACPI_PHYSICAL_READER reader,
+    void *reader_context,
+    DAWN_ACPI_MADT_INVENTORY *inventory);
 
 #endif
