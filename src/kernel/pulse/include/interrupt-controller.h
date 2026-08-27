@@ -29,5 +29,6 @@ int pulse_x86_apic_handoff_plan_build(
     const DAWN_ACPI_MADT_INVENTORY *madt,
     const DAWN_ACPI_MADT_X86_INVENTORY *x86_madt,
     PULSE_X86_APIC_HANDOFF_PLAN *plan);
+int pulse_x86_apic_handoff_plan_is_ready(const PULSE_X86_APIC_HANDOFF_PLAN *plan);
 
 #endif

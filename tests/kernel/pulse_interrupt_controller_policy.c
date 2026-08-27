@@ -42,7 +42,13 @@ int main(void) {
                     plan.local_apic_id == 1U && plan.local_interrupt_controller_address == UINT32_C(0xfee00000) &&
                     plan.io_apic_id == 2U && plan.io_apic_physical_address == UINT32_C(0xfec00000) &&
                     plan.global_system_interrupt_base == 32U,
-                    "valid metadata forms immutable handoff plan")) {
+                    "valid metadata forms immutable handoff plan") ||
+        !expect(pulse_x86_apic_handoff_plan_is_ready(&plan), "aligned immutable plan is ready") ||
+        !expect(!pulse_x86_apic_handoff_plan_is_ready((const void *)0), "null handoff plan is rejected")) {
+        return 1;
+    }
+    plan.io_apic_physical_address = UINT32_C(0xfec00001);
+    if (!expect(!pulse_x86_apic_handoff_plan_is_ready(&plan), "unaligned I/O APIC address is rejected")) {
         return 1;
     }
     madt.local_apics[0].flags = 0U;

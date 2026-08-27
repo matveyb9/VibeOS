@@ -82,7 +82,8 @@ static int pulse_acpi_child_table_inventory_probe(const DAWN_CONTEXT *context) {
                    dawn_acpi_madt_x86_inventory(&madt, pulse_acpi_read_lower_4g, (void *)0, &madt_x86) &&
                    pulse_interrupt_controller_select(&madt_x86, &controller_selection) &&
                    controller_selection.active_controller == PULSE_INTERRUPT_CONTROLLER_PIC &&
-                   pulse_x86_apic_handoff_plan_build(&madt, &madt_x86, &apic_handoff_plan);
+                   pulse_x86_apic_handoff_plan_build(&madt, &madt_x86, &apic_handoff_plan) &&
+                   pulse_x86_apic_handoff_plan_is_ready(&apic_handoff_plan);
         }
     }
     return 0;

@@ -49,3 +49,10 @@ int pulse_x86_apic_handoff_plan_build(
     plan->global_system_interrupt_base = x86_madt->io_apics[io_index].global_system_interrupt_base;
     return 1;
 }
+
+int pulse_x86_apic_handoff_plan_is_ready(const PULSE_X86_APIC_HANDOFF_PLAN *plan) {
+    return plan != (const void *)0 && plan->local_interrupt_controller_address != 0U &&
+           plan->io_apic_physical_address != 0U &&
+           (plan->local_interrupt_controller_address & UINT32_C(0xfff)) == 0U &&
+           (plan->io_apic_physical_address & UINT32_C(0xfff)) == 0U;
+}
