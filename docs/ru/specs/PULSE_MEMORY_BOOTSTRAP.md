@@ -26,6 +26,8 @@ Bootstrap не объединяет смежные области, не резе
 
 Цель `make test` в репозитории запускает host-side unit-тесты проверки дескрипторов, выравнивания страниц, смежности и обработки конца области до QEMU integration probe.
 
+Prelude встраивает raw-образ Pulse вместе с zero-filled BSS. Так bootstrap allocator, состояние page table и состояние IDT начинают работу из определённой памяти до того, как Pulse принимает управление.
+
 ## Источник
 
 [1] [Спецификация ACPI: UEFI GetMemoryMap() Boot Services Function](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/15_System_Address_Map_Interfaces/uefi-getmemorymap-boot-services-function.html)

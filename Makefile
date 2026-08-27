@@ -78,7 +78,7 @@ $(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_MAIN_OBJ)
 		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ)
 
 $(PULSE_BIN): $(PULSE_ELF)
-	$(LLVM_OBJCOPY) -O binary $< $@
+	$(LLVM_OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $< $@
 
 $(PULSE_MEMORY_TEST): tests/kernel/pulse_memory_bootstrap.c $(PULSE_DIR)/memory/early.c $(PULSE_DIR)/include/memory.h src/platform/dawn/include/dawn.h
 	@mkdir -p $(dir $@)

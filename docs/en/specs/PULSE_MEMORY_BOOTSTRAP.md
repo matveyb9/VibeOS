@@ -26,6 +26,8 @@ The bootstrap does not coalesce adjacent regions, reserve pages already consumed
 
 The repository's `make test` target runs host-side unit checks for descriptor validation, page alignment, adjacency, and end-of-region handling before the QEMU integration probe.
 
+Prelude embeds the Pulse raw image with its zero-filled BSS included. This guarantees that the bootstrap allocator, page-table state, and IDT state begin from defined memory before Pulse takes over execution.
+
 ## Reference
 
 [1] [ACPI Specification: UEFI GetMemoryMap() Boot Services Function](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/15_System_Address_Map_Interfaces/uefi-getmemorymap-boot-services-function.html)
