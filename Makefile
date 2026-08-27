@@ -286,10 +286,10 @@ $(PULSE_CONTEXT_TEST): tests/kernel/pulse_context_bootstrap.c $(PULSE_DIR)/sched
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include \
 		tests/kernel/pulse_context_bootstrap.c $(PULSE_DIR)/schedule/context.c -o $@
 
-$(PULSE_TIMER_TEST): tests/kernel/pulse_timer_bootstrap.c $(PULSE_DIR)/time/pit-x86_64.c $(PULSE_DIR)/interrupts/pic-x86_64.c $(PULSE_DIR)/include/timer.h $(PULSE_DIR)/include/pic.h
+$(PULSE_TIMER_TEST): tests/kernel/pulse_timer_bootstrap.c $(PULSE_DIR)/time/pit-x86_64.c $(PULSE_DIR)/interrupts/pic-x86_64.c $(PULSE_DIR)/interrupts/controller-policy.c $(PULSE_DIR)/include/timer.h $(PULSE_DIR)/include/pic.h $(PULSE_DIR)/include/interrupt-controller.h
 	@mkdir -p $(dir $@)
-	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include \
-		tests/kernel/pulse_timer_bootstrap.c $(PULSE_DIR)/time/pit-x86_64.c $(PULSE_DIR)/interrupts/pic-x86_64.c -o $@
+	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include -Isrc/platform/dawn/include \
+		tests/kernel/pulse_timer_bootstrap.c $(PULSE_DIR)/time/pit-x86_64.c $(PULSE_DIR)/interrupts/pic-x86_64.c $(PULSE_DIR)/interrupts/controller-policy.c -o $@
 
 $(PULSE_RELAY_TEST): tests/kernel/pulse_relay_bootstrap.c src/security/keys/key-space.c src/ipc/relay/link.c src/ipc/relay/channel.c src/runtime/origin/origin.c src/runtime/origin/abi.c
 	@mkdir -p $(dir $@)
@@ -396,14 +396,14 @@ $(BIOS_IMAGE): $(BIOS_STAGE1_BIN) $(BIOS_STAGE2_BIN) $(PULSE_BIN)
 	dd if=$(PULSE_BIN) of=$@ bs=512 seek=$$((1 + $(PRELUDE_BIOS_STAGE2_SECTORS))) conv=notrunc
 
 check-uefi: $(ESP_IMAGE)
-	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PARCEL: native launch admission verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: keyboard event queue verified" "ATLAS: PCI inventory verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "DAWN: ACPI child table inventory verified" "DAWN: ACPI MADT metadata inventory verified" "DAWN: ACPI x86 APIC metadata inventory verified" "PULSE: PIC controller policy verified" "PULSE: x86 APIC handoff plan verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
+	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PARCEL: native launch admission verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: keyboard event queue verified" "ATLAS: PCI inventory verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "DAWN: ACPI child table inventory verified" "DAWN: ACPI MADT metadata inventory verified" "DAWN: ACPI x86 APIC metadata inventory verified" "PULSE: PIC controller policy verified" "PULSE: x86 APIC handoff plan verified" "PULSE: PIT timer source policy verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
 
 check-keyboard:
 	$(MAKE) BUILD_DIR=build-keyboard PULSE_PROBE=keyboard uefi-image
 	tools/check-keyboard.sh build-keyboard/vibeos-uefi-esp.img "ATLAS: keyboard irq probe ready" "HORIZON: keyboard focus redrawn" "PARCEL: native launch request formed" "HORIZON: keyboard selection redrawn"
 
 check-bios: $(BIOS_IMAGE)
-	tools/check-bios.sh $(BIOS_IMAGE) "PRELUDE BIOS: Dawn Context sealed" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "DAWN: ACPI child table inventory verified" "DAWN: ACPI MADT metadata inventory verified" "DAWN: ACPI x86 APIC metadata inventory verified" "PULSE: x86 APIC handoff plan verified" "PULSE: timer interrupt handled"
+	tools/check-bios.sh $(BIOS_IMAGE) "PRELUDE BIOS: Dawn Context sealed" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "DAWN: ACPI child table inventory verified" "DAWN: ACPI MADT metadata inventory verified" "DAWN: ACPI x86 APIC metadata inventory verified" "PULSE: x86 APIC handoff plan verified" "PULSE: PIT timer source policy verified" "PULSE: timer interrupt handled"
 
 check-panic: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE) "PULSE PANIC: unhandled interrupt"

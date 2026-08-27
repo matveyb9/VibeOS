@@ -66,6 +66,7 @@ static int pulse_acpi_child_table_inventory_probe(const DAWN_CONTEXT *context) {
     DAWN_ACPI_MADT_X86_INVENTORY madt_x86;
     PULSE_INTERRUPT_CONTROLLER_SELECTION controller_selection;
     PULSE_X86_APIC_HANDOFF_PLAN apic_handoff_plan;
+    PULSE_TIMER_SOURCE_SELECTION timer_selection;
     uint32_t index;
 
     if (context == (void *)0 ||
@@ -83,7 +84,9 @@ static int pulse_acpi_child_table_inventory_probe(const DAWN_CONTEXT *context) {
                    pulse_interrupt_controller_select(&madt_x86, &controller_selection) &&
                    controller_selection.active_controller == PULSE_INTERRUPT_CONTROLLER_PIC &&
                    pulse_x86_apic_handoff_plan_build(&madt, &madt_x86, &apic_handoff_plan) &&
-                   pulse_x86_apic_handoff_plan_is_ready(&apic_handoff_plan);
+                   pulse_x86_apic_handoff_plan_is_ready(&apic_handoff_plan) &&
+                   pulse_timer_source_select(&controller_selection, &apic_handoff_plan, &timer_selection) &&
+                   timer_selection.active_source == PULSE_TIMER_SOURCE_PIT;
         }
     }
     return 0;
@@ -150,6 +153,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         pulse_debug_write("DAWN: ACPI x86 APIC metadata inventory verified\n");
         pulse_debug_write("PULSE: PIC controller policy verified\n");
         pulse_debug_write("PULSE: x86 APIC handoff plan verified\n");
+        pulse_debug_write("PULSE: PIT timer source policy verified\n");
         pulse_scheduler_initialize();
         if (!pulse_scheduler_create_ready_task(&first_task) ||
             !pulse_scheduler_create_ready_task(&second_task) ||

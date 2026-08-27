@@ -19,6 +19,8 @@
 
 Intel System Programming Guide описывает доставку interrupts, выбор gate и управление interrupt-enable; Pulse использует timer только после проверки IDT, собственного paging и terminal failure path.[1] Временный PIC/PIT route не является финальной timer architecture VibeOS. Pulse перейдёт на APIC-based routing, acknowledge interrupts, сбор tick и возврат из normalised trap frame до разрешения preemptive scheduling.
 
+Теперь у Pulse есть и pure timer-source selection policy. Она сохраняет PIT как active source и может отметить APIC timer handoff eligible только когда готов отдельно проверенный APIC metadata plan. Это не является программированием local-APIC timer, настройкой vector, interrupt rerouting или изменением PIT/PIC probe.
+
 ## Источник
 
 [1] [Intel 64 and IA-32 Architectures Software Developer's Manual, Volume 3](https://cdrdv2-public.intel.com/774493/325384-sdm-vol-3abcd.pdf)

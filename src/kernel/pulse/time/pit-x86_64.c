@@ -29,6 +29,19 @@ uint16_t pulse_timer_divisor_for_hz(uint32_t frequency_hz) {
     return (uint16_t)divisor;
 }
 
+int pulse_timer_source_select(
+    const PULSE_INTERRUPT_CONTROLLER_SELECTION *controller,
+    const PULSE_X86_APIC_HANDOFF_PLAN *apic_plan,
+    PULSE_TIMER_SOURCE_SELECTION *selection) {
+    if (controller == (const void *)0 || apic_plan == (const void *)0 || selection == (void *)0) {
+        return 0;
+    }
+    selection->active_source = PULSE_TIMER_SOURCE_PIT;
+    selection->apic_timer_handoff_eligible =
+        controller->apic_handoff_eligible != 0U && pulse_x86_apic_handoff_plan_is_ready(apic_plan);
+    return 1;
+}
+
 void pulse_timer_start_probe(void) {
     uint16_t divisor = pulse_timer_divisor_for_hz(PULSE_TIMER_PROBE_HZ);
 
