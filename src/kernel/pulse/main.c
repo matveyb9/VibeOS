@@ -13,6 +13,7 @@
 #include "context.h"
 #include "timer.h"
 #include <origin.h>
+#include <vaultfs.h>
 
 static void pulse_debug_putc(char character) {
     __asm__ volatile("outb %0, %w1" : : "a"(character), "d"((uint16_t)0x402));
@@ -47,8 +48,9 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
     if (pulse_context_is_valid(context) && pulse_memory_initialize(context) &&
         pulse_memory_take_frame(&first_frame) && pulse_memory_take_frame(&second_frame) &&
         second_frame == first_frame + 4096U && pulse_paging_initialize() &&
-        pulse_interrupts_initialize() && origin_runtime_probe()) {
+        pulse_interrupts_initialize() && origin_runtime_probe() && vaultfs_runtime_probe()) {
         pulse_debug_write("ORIGIN: delegated key verified\n");
+        pulse_debug_write("VAULT: redundant superblock recovered\n");
         pulse_scheduler_initialize();
         if (!pulse_scheduler_create_ready_task(&first_task) ||
             !pulse_scheduler_create_ready_task(&second_task) ||
