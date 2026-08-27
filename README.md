@@ -10,7 +10,7 @@ VibeOS is not a Linux distribution and does not inherit a POSIX compatibility la
 
 ## Current status
 
-VibeOS is in the **project foundation** stage. The architecture, repository principles, and initial documentation are established. A bootable image is not available yet.
+VibeOS is in the **project foundation** stage. The architecture, repository principles, and initial documentation are established. The first independent x86_64 UEFI Prelude image now builds and is verified in QEMU; Pulse is not yet loaded.
 
 ## What we are building
 
@@ -20,9 +20,13 @@ The first stable target is x86_64. VibeOS is designed to support UEFI and legacy
 
 ## Quick start
 
-There is no bootable VibeOS image at this stage. The first practical quick-start guide will appear with the Project Foundation toolchain and QEMU profile.
+On a supported Linux host with the required toolchain, build and verify the first Prelude image with:
 
-Until then, start with the [architecture overview](docs/en/ARCHITECTURE.md), the [repository guide](docs/en/REPOSITORY.md), and the [roadmap](docs/en/ROADMAP.md).
+```text
+make check-uefi
+```
+
+Read [Build and verify Prelude on x86_64 UEFI](docs/en/guides/BUILD_X86_64_UEFI.md) for prerequisites, generated files, and the verification result. It is an experimental bring-up image, not an installable operating-system release.
 
 ## Roadmap at a glance
 
@@ -36,6 +40,7 @@ Read the [simplified roadmap](docs/en/ROADMAP.md) for the full sequence and its 
 - Learn how the [repository is organised](docs/en/REPOSITORY.md).
 - Review the [documentation policy](docs/en/DOCUMENTATION.md).
 - Read the [contribution and workflow guide](docs/en/CONTRIBUTING.md).
+- Build the first [x86_64 UEFI Prelude image](docs/en/guides/BUILD_X86_64_UEFI.md).
 - See the planned [application platform and Vibe SDK](docs/en/SDK.md).
 - Track the [roadmap](docs/en/ROADMAP.md).
 
