@@ -22,11 +22,19 @@ int main(void) {
         !expect(!atlas_keyboard_receive_scancode(UINT8_C(0xe0)), "extended prefix is deferred") ||
         !expect(atlas_keyboard_receive_scancode(UINT8_C(0x23)), "make scancode is queued") ||
         !expect(atlas_keyboard_receive_scancode(UINT8_C(0xa3)), "break scancode is queued") ||
-        !expect(atlas_keyboard_pending_event_count() == 2U, "queued event count is exact") ||
+        !expect(atlas_keyboard_receive_scancode(UINT8_C(0x0f)), "Tab scancode is queued") ||
+        !expect(atlas_keyboard_receive_scancode(UINT8_C(0x1c)), "Enter scancode is queued") ||
+        !expect(atlas_keyboard_pending_event_count() == 4U, "queued event count is exact") ||
         !expect(atlas_keyboard_next_event(&event) && event.scancode == UINT8_C(0x23) &&
-                    event.pressed == 1U && event.ascii == 'H', "make event decodes") ||
-        !expect(atlas_keyboard_next_event(&event) && event.pressed == 0U && event.ascii == 'H',
+                    event.pressed == 1U && event.ascii == 'H' && event.key == ATLAS_KEY_NONE,
+                "text make event decodes") ||
+        !expect(atlas_keyboard_next_event(&event) && event.pressed == 0U && event.ascii == 'H' &&
+                    event.key == ATLAS_KEY_NONE,
                     "break event preserves normalized key") ||
+        !expect(atlas_keyboard_next_event(&event) && event.key == ATLAS_KEY_TAB && event.ascii == '\0',
+                "Tab retains semantic identity without text") ||
+        !expect(atlas_keyboard_next_event(&event) && event.key == ATLAS_KEY_ENTER && event.ascii == '\0',
+                "Enter retains semantic identity without text") ||
         !expect(atlas_keyboard_pending_event_count() == 0U, "queue drains")) {
         return 1;
     }

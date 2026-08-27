@@ -49,6 +49,16 @@ static char atlas_keyboard_decode_set_1(uint8_t make_code) {
     }
 }
 
+static ATLAS_KEY atlas_keyboard_key_from_set_1(uint8_t make_code) {
+    if (make_code == UINT8_C(0x0f)) {
+        return ATLAS_KEY_TAB;
+    }
+    if (make_code == UINT8_C(0x1c)) {
+        return ATLAS_KEY_ENTER;
+    }
+    return ATLAS_KEY_NONE;
+}
+
 void atlas_keyboard_initialize(void) {
     uint32_t index;
 
@@ -56,6 +66,7 @@ void atlas_keyboard_initialize(void) {
         early_keyboard_queue.events[index].scancode = 0U;
         early_keyboard_queue.events[index].pressed = 0U;
         early_keyboard_queue.events[index].ascii = '\0';
+        early_keyboard_queue.events[index].key = ATLAS_KEY_NONE;
     }
     early_keyboard_queue.read_index = 0U;
     early_keyboard_queue.write_index = 0U;
@@ -75,6 +86,7 @@ int atlas_keyboard_receive_scancode(uint8_t scancode) {
     event->scancode = make_code;
     event->pressed = (scancode & UINT8_C(0x80)) == 0U ? 1U : 0U;
     event->ascii = atlas_keyboard_decode_set_1(make_code);
+    event->key = atlas_keyboard_key_from_set_1(make_code);
     early_keyboard_queue.write_index =
         (early_keyboard_queue.write_index + 1U) % ATLAS_KEYBOARD_QUEUE_CAPACITY;
     ++early_keyboard_queue.event_count;
@@ -102,8 +114,11 @@ int atlas_keyboard_runtime_probe(void) {
     atlas_keyboard_initialize();
     return atlas_keyboard_receive_scancode(UINT8_C(0x23)) &&
            atlas_keyboard_receive_scancode(UINT8_C(0xa3)) &&
-           atlas_keyboard_pending_event_count() == 2U && atlas_keyboard_next_event(&event) &&
+           atlas_keyboard_receive_scancode(UINT8_C(0x0f)) && atlas_keyboard_pending_event_count() == 3U &&
+           atlas_keyboard_next_event(&event) &&
            event.scancode == UINT8_C(0x23) && event.pressed == 1U && event.ascii == 'H' &&
-           atlas_keyboard_next_event(&event) && event.pressed == 0U && event.ascii == 'H' &&
+           event.key == ATLAS_KEY_NONE && atlas_keyboard_next_event(&event) && event.pressed == 0U &&
+           event.ascii == 'H' && event.key == ATLAS_KEY_NONE && atlas_keyboard_next_event(&event) &&
+           event.key == ATLAS_KEY_TAB && event.pressed == 1U &&
            atlas_keyboard_pending_event_count() == 0U;
 }

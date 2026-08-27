@@ -7,10 +7,17 @@
 
 #define ATLAS_KEYBOARD_QUEUE_CAPACITY UINT32_C(32)
 
+typedef enum {
+    ATLAS_KEY_NONE = 0,
+    ATLAS_KEY_TAB = 1,
+    ATLAS_KEY_ENTER = 2
+} ATLAS_KEY;
+
 typedef struct {
     uint8_t scancode;
     uint8_t pressed;
     char ascii;
+    uint8_t key;
 } ATLAS_KEY_EVENT;
 
 void atlas_keyboard_initialize(void);
