@@ -54,3 +54,5 @@ VaultFS now also exposes a conservative recovery decision for one validated jour
 An immutable root update plan can now be formed for a valid next-generation root snapshot. It names a nonzero transaction, the alternate backup root target, the expected next generation, and the sealed payload checksum. Forming the plan performs no block write, no journal transition, no superblock replacement, and no process-visible filesystem change.
 
 The plan can produce a sealed `PREPARED` journal record with its exact transaction identity, alternate target, and payload checksum. This bounded transformation still performs no device I/O, snapshot write, journal persistence, commit transition, or superblock update.
+
+VaultFS can now persist that sealed prepared record to a caller-selected bounded Atlas journal block and load it back through the canonical journal wire validation. This remains preparation only: it does not write the next root snapshot, commit the record, replace a superblock, or claim an atomic update.

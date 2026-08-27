@@ -413,6 +413,16 @@ int vaultfs_root_update_journal_prepare(
     return vaultfs_journal_valid(journal);
 }
 
+int vaultfs_root_update_journal_store_prepared(
+    ATLAS_RAM_BLOCK_DEVICE *device,
+    uint64_t journal_block,
+    const VAULTFS_ROOT_UPDATE_PLAN *plan) {
+    VAULTFS_JOURNAL_ENTRY journal;
+
+    return vaultfs_root_update_journal_prepare(plan, &journal) &&
+           vaultfs_journal_store(device, journal_block, &journal);
+}
+
 int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot) {
     if (!vaultfs_superblock_valid(superblock) || !vaultfs_system_slot_valid(target_slot) ||
         target_slot == superblock->active_system_slot) {

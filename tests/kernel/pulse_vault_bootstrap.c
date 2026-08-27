@@ -74,6 +74,12 @@ int main(void) {
                     "root update plan produces sealed prepared journal metadata")) {
         return 1;
     }
+    if (!expect(vaultfs_root_update_journal_store_prepared(&device, UINT64_C(4), &update_plan) &&
+                    vaultfs_journal_load(&device, UINT64_C(4), &loaded_journal_entry) &&
+                    loaded_journal_entry.state == VAULTFS_JOURNAL_PREPARED,
+                    "prepared root update journal persists through canonical wire bytes")) {
+        return 1;
+    }
     if (!expect(vaultfs_superblock_valid(&primary) && primary.root_directory_block == UINT64_C(2),
                     "primary stores sealed root-directory block metadata") ||
         !expect(vaultfs_superblock_store(&device, 0U, &primary), "primary stores") ||
