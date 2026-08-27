@@ -47,8 +47,11 @@ static EFI_STATUS prelude_capture_dawn_context(EFI_SYSTEM_TABLE *system_table) {
     UINTN map_key = 0;
     UINTN descriptor_size = 0;
     UINT32 descriptor_version = 0;
-    UINTN allocation_size;
+    UINTN memory_map_capacity;
+    UINTN descriptor_count;
+    UINTN descriptor_index;
     EFI_MEMORY_DESCRIPTOR *memory_map = (void *)0;
+    DAWN_MEMORY_DESCRIPTOR *dawn_memory_map = (void *)0;
 
     status = boot_services->get_memory_map(
         &memory_map_size, (void *)0, &map_key, &descriptor_size, &descriptor_version);
@@ -56,26 +59,57 @@ static EFI_STATUS prelude_capture_dawn_context(EFI_SYSTEM_TABLE *system_table) {
         return status;
     }
 
-    allocation_size = memory_map_size + (descriptor_size * 8U);
-    status = boot_services->allocate_pool(EFI_LOADER_DATA, allocation_size, (void **)&memory_map);
+    memory_map_capacity = memory_map_size + (descriptor_size * 8U);
+    status = boot_services->allocate_pool(EFI_LOADER_DATA, memory_map_capacity, (void **)&memory_map);
     if (status != EFI_SUCCESS) {
         return status;
     }
 
+    memory_map_size = memory_map_capacity;
     status = boot_services->get_memory_map(
-        &allocation_size, memory_map, &map_key, &descriptor_size, &descriptor_version);
+        &memory_map_size, memory_map, &map_key, &descriptor_size, &descriptor_version);
     if (status != EFI_SUCCESS) {
         return status;
+    }
+
+    if (descriptor_size < sizeof(EFI_MEMORY_DESCRIPTOR) || memory_map_size == 0U ||
+        (memory_map_size % descriptor_size) != 0U) {
+        return EFI_LOAD_ERROR;
+    }
+    descriptor_count = memory_map_capacity / descriptor_size;
+    status = boot_services->allocate_pool(
+        EFI_LOADER_DATA, descriptor_count * sizeof(DAWN_MEMORY_DESCRIPTOR), (void **)&dawn_memory_map);
+    if (status != EFI_SUCCESS) {
+        return status;
+    }
+
+    memory_map_size = memory_map_capacity;
+    status = boot_services->get_memory_map(
+        &memory_map_size, memory_map, &map_key, &descriptor_size, &descriptor_version);
+    if (status != EFI_SUCCESS || descriptor_size < sizeof(EFI_MEMORY_DESCRIPTOR) || memory_map_size == 0U ||
+        (memory_map_size % descriptor_size) != 0U) {
+        return status == EFI_SUCCESS ? EFI_LOAD_ERROR : status;
+    }
+    descriptor_count = memory_map_size / descriptor_size;
+    for (descriptor_index = 0; descriptor_index < descriptor_count; ++descriptor_index) {
+        const EFI_MEMORY_DESCRIPTOR *descriptor =
+            (const EFI_MEMORY_DESCRIPTOR *)((const uint8_t *)memory_map + (descriptor_index * descriptor_size));
+
+        dawn_memory_map[descriptor_index].physical_start = descriptor->physical_start;
+        dawn_memory_map[descriptor_index].byte_size = descriptor->number_of_pages * PRELUDE_PAGE_SIZE;
+        dawn_memory_map[descriptor_index].kind =
+            descriptor->type == UINT32_C(7) ? DAWN_MEMORY_USABLE : DAWN_MEMORY_RESERVED;
+        dawn_memory_map[descriptor_index].attributes = 0U;
     }
 
     dawn_context.magic = DAWN_CONTEXT_MAGIC;
     dawn_context.version = DAWN_CONTEXT_VERSION;
     dawn_context.size = (uint32_t)sizeof(dawn_context);
-    dawn_context.memory_map_physical_address = (uint64_t)(UINTN)memory_map;
-    dawn_context.memory_map_size = (uint64_t)allocation_size;
+    dawn_context.memory_map_physical_address = (uint64_t)(UINTN)dawn_memory_map;
+    dawn_context.memory_map_size = descriptor_count * sizeof(DAWN_MEMORY_DESCRIPTOR);
     dawn_context.memory_map_key = (uint64_t)map_key;
-    dawn_context.memory_descriptor_size = (uint64_t)descriptor_size;
-    dawn_context.memory_descriptor_version = descriptor_version;
+    dawn_context.memory_descriptor_size = sizeof(DAWN_MEMORY_DESCRIPTOR);
+    dawn_context.memory_descriptor_version = DAWN_MEMORY_DESCRIPTOR_VERSION;
     dawn_context.reserved = 0;
     return EFI_SUCCESS;
 }

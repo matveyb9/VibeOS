@@ -11,7 +11,20 @@
 #include <stdint.h>
 
 #define DAWN_CONTEXT_MAGIC UINT64_C(0x4441574E43545831)
-#define DAWN_CONTEXT_VERSION UINT32_C(2)
+#define DAWN_CONTEXT_VERSION UINT32_C(3)
+#define DAWN_MEMORY_DESCRIPTOR_VERSION UINT32_C(1)
+
+typedef enum {
+    DAWN_MEMORY_RESERVED = 0,
+    DAWN_MEMORY_USABLE = 1
+} DAWN_MEMORY_KIND;
+
+typedef struct {
+    uint64_t physical_start;
+    uint64_t byte_size;
+    uint32_t kind;
+    uint32_t attributes;
+} DAWN_MEMORY_DESCRIPTOR;
 
 typedef enum {
     DAWN_PIXEL_FORMAT_RGBX8888 = 1,

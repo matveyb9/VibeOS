@@ -5,15 +5,6 @@
 
 #include "memory.h"
 
-typedef struct {
-    uint32_t type;
-    uint32_t padding;
-    uint64_t physical_start;
-    uint64_t virtual_start;
-    uint64_t number_of_pages;
-    uint64_t attribute;
-} TEST_UEFI_MEMORY_DESCRIPTOR;
-
 static int expect(int condition, const char *message) {
     if (!condition) {
         fprintf(stderr, "failed: %s\n", message);
@@ -23,10 +14,10 @@ static int expect(int condition, const char *message) {
 }
 
 int main(void) {
-    TEST_UEFI_MEMORY_DESCRIPTOR map[3] = {
-        {0U, 0U, UINT64_C(0x0), 0U, 1U, 0U},
-        {7U, 0U, UINT64_C(0x1003), 0U, 4U, 0U},
-        {7U, 0U, UINT64_C(0x8000), 0U, 2U, 0U},
+    DAWN_MEMORY_DESCRIPTOR map[3] = {
+        {UINT64_C(0x0), UINT64_C(0x1000), DAWN_MEMORY_RESERVED, 0U},
+        {UINT64_C(0x1003), UINT64_C(0x4000), DAWN_MEMORY_USABLE, 0U},
+        {UINT64_C(0x8000), UINT64_C(0x2000), DAWN_MEMORY_USABLE, 0U},
     };
     DAWN_CONTEXT context = {
         DAWN_CONTEXT_MAGIC,
@@ -35,8 +26,8 @@ int main(void) {
         (uint64_t)(uintptr_t)map,
         sizeof(map),
         0U,
-        sizeof(TEST_UEFI_MEMORY_DESCRIPTOR),
-        1U,
+        sizeof(DAWN_MEMORY_DESCRIPTOR),
+        DAWN_MEMORY_DESCRIPTOR_VERSION,
         0U,
         0U,
         0U,

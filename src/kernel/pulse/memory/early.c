@@ -1,7 +1,7 @@
 /*
- * VibeOS Pulse — early physical-frame bootstrap from the UEFI memory map.
+ * VibeOS Pulse — early physical-frame bootstrap from Dawn memory regions.
  *
- * This stage records all tracked EfiConventionalMemory ranges and allocates
+ * This stage records all tracked Dawn usable ranges and allocates
  * 4 KiB frames in ascending order. It is a bootstrap for page-table setup,
  * not the final ownership-aware Pulse physical-memory manager.
  */
@@ -9,17 +9,6 @@
 #include "memory.h"
 
 #define PULSE_PAGE_SIZE UINT64_C(4096)
-#define PULSE_EFI_CONVENTIONAL_MEMORY UINT32_C(7)
-
-typedef struct {
-    uint32_t type;
-    uint32_t padding;
-    uint64_t physical_start;
-    uint64_t virtual_start;
-    uint64_t number_of_pages;
-    uint64_t attribute;
-} PULSE_UEFI_MEMORY_DESCRIPTOR;
-
 typedef struct {
     uint64_t base;
     uint64_t limit;
@@ -60,7 +49,8 @@ int pulse_memory_initialize(const DAWN_CONTEXT *context) {
     const uint8_t *map_base;
 
     pulse_clear_memory_state();
-    if (context == (void *)0 || context->memory_descriptor_size < sizeof(PULSE_UEFI_MEMORY_DESCRIPTOR) ||
+    if (context == (void *)0 || context->memory_descriptor_size != sizeof(DAWN_MEMORY_DESCRIPTOR) ||
+        context->memory_descriptor_version != DAWN_MEMORY_DESCRIPTOR_VERSION ||
         (context->memory_map_size % context->memory_descriptor_size) != 0U) {
         return 0;
     }
@@ -68,23 +58,21 @@ int pulse_memory_initialize(const DAWN_CONTEXT *context) {
     map_base = (const uint8_t *)(uintptr_t)context->memory_map_physical_address;
     descriptor_count = context->memory_map_size / context->memory_descriptor_size;
     for (descriptor_index = 0; descriptor_index < descriptor_count; ++descriptor_index) {
-        const PULSE_UEFI_MEMORY_DESCRIPTOR *descriptor =
-            (const PULSE_UEFI_MEMORY_DESCRIPTOR *)(map_base +
-                                                    (descriptor_index * context->memory_descriptor_size));
+        const DAWN_MEMORY_DESCRIPTOR *descriptor =
+            (const DAWN_MEMORY_DESCRIPTOR *)(map_base + (descriptor_index * context->memory_descriptor_size));
         uint64_t region_base;
         uint64_t region_limit;
         uint64_t region_bytes;
         uint32_t region_index;
 
-        if (descriptor->type != PULSE_EFI_CONVENTIONAL_MEMORY || descriptor->number_of_pages == 0U ||
-            descriptor->number_of_pages >
-                (UINT64_MAX - descriptor->physical_start) / PULSE_PAGE_SIZE) {
+        if (descriptor->kind != DAWN_MEMORY_USABLE || descriptor->byte_size == 0U ||
+            descriptor->byte_size > UINT64_MAX - descriptor->physical_start) {
             continue;
         }
 
         region_base = pulse_align_up(descriptor->physical_start, PULSE_PAGE_SIZE);
         region_limit = pulse_align_down(
-            descriptor->physical_start + (descriptor->number_of_pages * PULSE_PAGE_SIZE),
+            descriptor->physical_start + descriptor->byte_size,
             PULSE_PAGE_SIZE);
         if (region_base >= region_limit || early_memory_state.region_count >= PULSE_MEMORY_MAX_REGIONS) {
             return 0;

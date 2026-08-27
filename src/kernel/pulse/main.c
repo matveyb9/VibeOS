@@ -40,7 +40,8 @@ static int pulse_context_is_valid(const DAWN_CONTEXT *context) {
     return context != (void *)0 && context->magic == DAWN_CONTEXT_MAGIC &&
            context->version == DAWN_CONTEXT_VERSION && context->size >= sizeof(DAWN_CONTEXT) &&
            context->memory_map_physical_address != 0 && context->memory_map_size != 0 &&
-           context->memory_descriptor_size >= 40U && context->kernel_stack_top != 0 &&
+           context->memory_descriptor_size == sizeof(DAWN_MEMORY_DESCRIPTOR) &&
+           context->memory_descriptor_version == DAWN_MEMORY_DESCRIPTOR_VERSION && context->kernel_stack_top != 0 &&
            context->kernel_stack_size >= 4096U && context->framebuffer_physical_address != 0U &&
            context->framebuffer_byte_size != 0U && context->framebuffer_width != 0U &&
            context->framebuffer_height != 0U && context->framebuffer_pixels_per_scan_line >= context->framebuffer_width &&

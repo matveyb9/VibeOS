@@ -2,47 +2,42 @@
   <a href="../../en/specs/DAWN_CONTEXT.md">🇺🇸 ENGLISH</a> &nbsp;|&nbsp; <strong>🇷🇺 РУССКИЙ</strong>
 </p>
 
-# Dawn Context v2
+# Dawn Context v3
 
-**Статус:** Реализован в Prelude и проверен начальной точкой входа Pulse x86_64.
+**Статус:** Version 3 реализован для UEFI Prelude path. Это portable contract, который должен формировать и отдельный Legacy BIOS Prelude path.
 
-`Dawn Context` — компактный версионированный boot-контракт, через который Prelude передаёт состояние платформы Pulse. Версия 2 содержит UEFI memory map, descriptor раннего kernel stack и descriptor framebuffer Graphics Output Protocol, выбранного firmware. Она намеренно не передаёт Pulse действующие UEFI Boot Services.
+> **Dawn Context** — единая immutable handoff record от Prelude к Pulse. Она не содержит callable firmware interface и использует только physical address.
 
-UEFI Boot Services доступны только до успешного вызова `ExitBootServices()`; после этого перехода OS loader принимает управление платформой.[1] Prelude получает memory map через `GetMemoryMap()`, который предоставляет описание ресурсов памяти, передаваемое OS loader дальше.[2]
+Version 3 заменяет UEFI memory-descriptor layout на принадлежащий VibeOS массив `DAWN_MEMORY_DESCRIPTOR`. Благодаря этому Pulse и следующие boot path не зависят от UEFI descriptor type, padding и version. Prelude преобразует каждую firmware memory record до final firmware exit; затем Pulse доверяет только normalized result.[1]
 
 ## Бинарная структура
 
-| Поле | Тип | Назначение |
-|---|---|---|
-| `magic` | `UINT64` | `DAWN_CONTEXT_MAGIC`, идентификатор бинарного контракта. |
-| `version` | `UINT32` | Текущая версия контракта: `2`. |
-| `size` | `UINT32` | Полный размер структуры на стороне producer. |
-| `memory_map_physical_address` | `uint64_t` | Физический адрес UEFI memory descriptors, сохранённых для Pulse. |
-| `memory_map_size` | `uint64_t` | Занятый размер сохранённой карты в байтах. |
-| `memory_map_key` | `UINTN` | Ключ, с которым Boot Services были успешно закрыты. |
-| `memory_descriptor_size` | `UINTN` | Шаг между дескрипторами. |
-| `memory_descriptor_version` | `UINT32` | Версия UEFI-дескрипторов. |
-| `reserved` | `UINT32` | Нуль в v2. |
-| `kernel_stack_top` | `uint64_t` | Физический адрес вершины начального стека Pulse. |
-| `kernel_stack_size` | `uint64_t` | Размер начального стека в байтах. |
-| `framebuffer_physical_address` | `uint64_t` | Physical base GOP framebuffer. |
-| `framebuffer_byte_size` | `uint64_t` | Допустимый byte size GOP framebuffer. |
-| `framebuffer_width` / `framebuffer_height` | `uint32_t` | Current visible pixel dimension. |
-| `framebuffer_pixels_per_scan_line` | `uint32_t` | Physical scan-line stride в pixel. |
-| `framebuffer_pixel_format` | `uint32_t` | Framebuffer format v2: `RGBX8888` или `BGRX8888`. |
+| Поле | Тип | Значение |
+|---|---:|---|
+| `magic` | `uint64_t` | Константа `DAWN_CONTEXT_MAGIC`. |
+| `version` | `uint32_t` | Текущая contract version: `3`. |
+| `size` | `uint32_t` | Размер структуры producer; layout append-only. |
+| `memory_map_physical_address` | `uint64_t` | Physical address VibeOS-owned memory descriptor. |
+| `memory_map_size` | `uint64_t` | Точный byte size этого descriptor array. |
+| `memory_map_key` | `uint64_t` | Producer-private final-map token; UEFI Prelude использует его только при firmware exit. |
+| `memory_descriptor_size` | `uint64_t` | Должен быть равен `sizeof(DAWN_MEMORY_DESCRIPTOR)`. |
+| `memory_descriptor_version` | `uint32_t` | Должен быть равен `DAWN_MEMORY_DESCRIPTOR_VERSION`. |
+| `kernel_stack_top` / `kernel_stack_size` | `uint64_t` | Location early Pulse stack и byte capacity. |
+| framebuffer fields | mixed | Physical framebuffer address, byte size, dimension, stride и RGBX/BGRX format. |
 
-## Правила producer
+| Поле `DAWN_MEMORY_DESCRIPTOR` | Значение |
+|---|---|
+| `physical_start` | Первый physical byte range. |
+| `byte_size` | Точная длина в byte, не page count. |
+| `kind` | `DAWN_MEMORY_USABLE` или `DAWN_MEMORY_RESERVED`. Unknown source type становятся reserved. |
+| `attributes` | Зарезервировано для будущей VibeOS-owned memory metadata; сейчас zero. |
 
-Сначала Prelude запрашивает размер карты, выделяет `LoaderData`-буфер с дополнительной ёмкостью под дескрипторы, получает актуальные карту и ключ, затем вызывает `ExitBootServices()`. Если firmware отклоняет ключ из-за изменения карты, Prelude получает новую карту и повторяет попытку не более трёх раз. После успеха он не вызывает функции Boot Services.
+UEFI producer получает map через `GetMemoryMap`, преобразует UEFI conventional memory в `DAWN_MEMORY_USABLE` и консервативно отмечает все остальные descriptor как reserved перед `ExitBootServices`.[1] Legacy BIOS producer будет отображать E820 usable entry в тот же `DAWN_MEMORY_USABLE`, а все остальные entry — в reserved. Поэтому Pulse потребляет одну architecture-neutral shape независимо от firmware path.
 
-Структура **только дополняется в конец**. Будущая сборка Pulse должна отклонять неизвестный `magic`, неподдерживаемую новую `version` и `size`, недостаточный для используемых полей. Будущий Prelude сможет добавлять поля без нарушения совместимости со старым Pulse, учитывающим размер.
+## Правила контракта
 
-## Текущая граница handoff
-
-Этот этап запечатывает context, загружает первый нативный образ Pulse по физическому адресу `0x00200000` и подтверждает прямой переход в QEMU. Prelude выделяет отдельный stack Pulse размером 128 КиБ и захватывает active GOP framebuffer до получения final memory map. Pulse валидирует contract, запускает ранний software framebuffer path, выбирает EFI conventional memory, строит собственные page table и начинает interrupt bootstrap.
+Producer должен заполнить все required field перед transfer control и никогда не раскрывать Pulse live firmware service. Consumer проверяет magic, version, minimum size, normalized descriptor stride/version, nonempty map, valid stack и valid framebuffer до использования address. Unknown future memory kind остаются unusable, пока следующий Pulse contract revision явно их не примет.
 
 ## Источники
 
 [1] [Спецификация UEFI: Boot Services](https://uefi.org/specs/UEFI/2.9_A/07_Services_Boot_Services.html)
-
-[2] [Спецификация ACPI: UEFI GetMemoryMap() Boot Services Function](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/15_System_Address_Map_Interfaces/uefi-getmemorymap-boot-services-function.html)
