@@ -20,6 +20,13 @@ int main(void) {
     PARCEL_REGISTRY registry;
     PARCEL_NATIVE_LAUNCH_REQUEST launch_request;
     PARCEL_NATIVE_LAUNCH_ADMISSION admission;
+    PARCEL_EXECUTABLE_IMAGE_DESCRIPTOR image = {
+        PARCEL_EXECUTABLE_IMAGE_DESCRIPTOR_VERSION,
+        PARCEL_EXECUTABLE_IMAGE_FORMAT_FLAT_X86_64,
+        UINT64_C(4096),
+        UINT64_C(64),
+        UINT32_C(0x11223344),
+    };
     VIBE_KEY authority;
     VIBE_KEY read_only;
 
@@ -36,6 +43,7 @@ int main(void) {
     parcel_registry_initialize(&registry);
 
     if (!expect(parcel_manifest_valid(&manifest), "valid manifest is accepted") ||
+        !expect(parcel_executable_image_descriptor_valid(&image), "bounded image descriptor is valid") ||
         !expect(origin_key_mint(PARCEL_REGISTRY_OBJECT, VIBE_RIGHT_READ | VIBE_RIGHT_WRITE, &authority),
                     "registry authority is minted") ||
         !expect(origin_key_narrow(authority, VIBE_RIGHT_READ, &read_only), "read-only child is minted") ||
@@ -61,8 +69,10 @@ int main(void) {
     }
 
     request.signature_verified = 0;
+    image.entry_offset = image.byte_count;
     if (!expect(!parcel_registry_install(&registry, authority, &request),
                     "unverified manifest is rejected") ||
+        !expect(!parcel_executable_image_descriptor_valid(&image), "out-of-range image entry offset is rejected") ||
         !expect(parcel_native_launch_request_initialize(&launch_request, HORIZON_APPLICATION_VECTOR) &&
                     parcel_registry_admit_native_launch(&registry, &launch_request, &admission) &&
                     admission.status == PARCEL_NATIVE_LAUNCH_REJECTED_NOT_INSTALLED,

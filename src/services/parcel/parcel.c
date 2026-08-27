@@ -169,6 +169,12 @@ int parcel_native_launch_request_valid(const PARCEL_NATIVE_LAUNCH_REQUEST *reque
            parcel_identifier_equal(request->application_id, application_id);
 }
 
+int parcel_executable_image_descriptor_valid(const PARCEL_EXECUTABLE_IMAGE_DESCRIPTOR *descriptor) {
+    return descriptor != (const void *)0 && descriptor->format_version == PARCEL_EXECUTABLE_IMAGE_DESCRIPTOR_VERSION &&
+           descriptor->image_format == PARCEL_EXECUTABLE_IMAGE_FORMAT_FLAT_X86_64 && descriptor->byte_count != 0U &&
+           descriptor->entry_offset < descriptor->byte_count && descriptor->payload_checksum != 0U;
+}
+
 int parcel_registry_admits_native_launch(
     const PARCEL_REGISTRY *registry, const PARCEL_NATIVE_LAUNCH_REQUEST *request) {
     PARCEL_NATIVE_LAUNCH_ADMISSION admission;
