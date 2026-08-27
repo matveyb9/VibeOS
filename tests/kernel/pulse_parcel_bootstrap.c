@@ -31,6 +31,8 @@ int main(void) {
     PARCEL_ELF64_HEADER_METADATA elf_metadata;
     uint8_t elf_program_header[PARCEL_ELF64_PROGRAM_HEADER_BYTES] = {0};
     PARCEL_ELF64_PROGRAM_HEADER_METADATA program_header_metadata;
+    PARCEL_ELF64_LOAD_PLAN load_plan;
+    PARCEL_ELF64_HEADER_METADATA invalid_header_metadata;
     VIBE_KEY authority;
     VIBE_KEY read_only;
 
@@ -45,7 +47,9 @@ int main(void) {
     elf_header[16] = 2U;
     elf_header[18] = 62U;
     elf_header[20] = 1U;
-    elf_header[24] = 0x80U;
+    elf_header[24] = 0x44U;
+    elf_header[25] = 0x40U;
+    elf_header[26] = 0x40U;
     elf_header[32] = PARCEL_ELF64_HEADER_BYTES;
     elf_header[52] = PARCEL_ELF64_HEADER_BYTES;
     elf_header[54] = 56U;
@@ -126,7 +130,7 @@ int main(void) {
                     "short bounded ELF input is rejected") ||
         !expect(parcel_elf64_header_describe(elf_header, sizeof(elf_header), &elf_metadata) &&
                     elf_metadata.image_type == 2U && elf_metadata.machine == 62U &&
-                    elf_metadata.entry_address == UINT64_C(0x80) && elf_metadata.program_header_offset == 64U &&
+                    elf_metadata.entry_address == UINT64_C(0x404044) && elf_metadata.program_header_offset == 64U &&
                     elf_metadata.program_header_entry_size == 56U && elf_metadata.program_header_count == 1U &&
                     elf_metadata.header_size == PARCEL_ELF64_HEADER_BYTES,
                     "bounded ELF64 header metadata is described") ||
@@ -136,6 +140,11 @@ int main(void) {
                     program_header_metadata.lowest_virtual_address == UINT64_C(0x404040) &&
                     program_header_metadata.highest_virtual_address == UINT64_C(0x404050),
                     "bounded ELF64 loadable program-header metadata is described") ||
+        !expect(parcel_elf64_load_plan_form(&elf_metadata, &program_header_metadata, &load_plan) &&
+                    load_plan.entry_address == UINT64_C(0x404044) &&
+                    load_plan.virtual_address_start == UINT64_C(0x404040) &&
+                    load_plan.virtual_address_end == UINT64_C(0x404050) && load_plan.loadable_segment_count == 1U,
+                    "immutable ELF64 load-plan metadata is formed") ||
         !expect(origin_key_mint(PARCEL_REGISTRY_OBJECT, VIBE_RIGHT_READ | VIBE_RIGHT_WRITE, &authority),
                     "registry authority is minted") ||
         !expect(origin_key_narrow(authority, VIBE_RIGHT_READ, &read_only), "read-only child is minted") ||
@@ -157,6 +166,13 @@ int main(void) {
                     "unknown native application is rejected") ||
         !expect(!parcel_registry_install(&registry, authority, &request),
                     "duplicate application identifier is rejected")) {
+        return 1;
+    }
+
+    invalid_header_metadata = elf_metadata;
+    invalid_header_metadata.entry_address = program_header_metadata.highest_virtual_address;
+    if (!expect(!parcel_elf64_load_plan_form(&invalid_header_metadata, &program_header_metadata, &load_plan),
+                    "load plan rejects an entry outside declared virtual span")) {
         return 1;
     }
 

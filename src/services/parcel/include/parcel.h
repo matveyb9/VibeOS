@@ -84,6 +84,13 @@ typedef struct {
     uint64_t highest_virtual_address;
 } PARCEL_ELF64_PROGRAM_HEADER_METADATA;
 
+typedef struct {
+    uint64_t entry_address;
+    uint64_t virtual_address_start;
+    uint64_t virtual_address_end;
+    uint32_t loadable_segment_count;
+} PARCEL_ELF64_LOAD_PLAN;
+
 void parcel_manifest_initialize(
     PARCEL_MANIFEST *manifest,
     const char *application_id,
@@ -116,6 +123,10 @@ int parcel_elf64_program_headers_describe(
     const uint8_t *program_headers,
     uint32_t program_header_bytes,
     PARCEL_ELF64_PROGRAM_HEADER_METADATA *metadata);
+int parcel_elf64_load_plan_form(
+    const PARCEL_ELF64_HEADER_METADATA *header_metadata,
+    const PARCEL_ELF64_PROGRAM_HEADER_METADATA *program_header_metadata,
+    PARCEL_ELF64_LOAD_PLAN *load_plan);
 int parcel_runtime_probe(void);
 
 #endif

@@ -280,6 +280,25 @@ int parcel_elf64_program_headers_describe(
     return metadata->loadable_segment_count != 0U;
 }
 
+int parcel_elf64_load_plan_form(
+    const PARCEL_ELF64_HEADER_METADATA *header_metadata,
+    const PARCEL_ELF64_PROGRAM_HEADER_METADATA *program_header_metadata,
+    PARCEL_ELF64_LOAD_PLAN *load_plan) {
+    if (header_metadata == (const void *)0 || program_header_metadata == (const void *)0 ||
+        load_plan == (void *)0 || header_metadata->image_type != 2U || header_metadata->machine != 62U ||
+        header_metadata->entry_address == 0U || program_header_metadata->loadable_segment_count == 0U ||
+        program_header_metadata->lowest_virtual_address >= program_header_metadata->highest_virtual_address ||
+        header_metadata->entry_address < program_header_metadata->lowest_virtual_address ||
+        header_metadata->entry_address >= program_header_metadata->highest_virtual_address) {
+        return 0;
+    }
+    load_plan->entry_address = header_metadata->entry_address;
+    load_plan->virtual_address_start = program_header_metadata->lowest_virtual_address;
+    load_plan->virtual_address_end = program_header_metadata->highest_virtual_address;
+    load_plan->loadable_segment_count = program_header_metadata->loadable_segment_count;
+    return 1;
+}
+
 int parcel_registry_admits_native_launch(
     const PARCEL_REGISTRY *registry, const PARCEL_NATIVE_LAUNCH_REQUEST *request) {
     PARCEL_NATIVE_LAUNCH_ADMISSION admission;
