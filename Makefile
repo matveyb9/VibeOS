@@ -41,6 +41,7 @@ PULSE_PRISM_OBJ := $(BUILD_DIR)/ui/prism/framebuffer.obj
 PULSE_PRISM_BOOTSTRAP_OBJ := $(BUILD_DIR)/ui/prism/bootstrap.obj
 PULSE_CANVAS_OBJ := $(BUILD_DIR)/ui/canvas/scene.obj
 PULSE_HORIZON_OBJ := $(BUILD_DIR)/apps/horizon/shell.obj
+PULSE_HORIZON_CATALOG_OBJ := $(BUILD_DIR)/apps/horizon/catalog.obj
 PULSE_HORIZON_FOCUS_OBJ := $(BUILD_DIR)/apps/horizon/focus.obj
 PULSE_HORIZON_INPUT_OBJ := $(BUILD_DIR)/apps/horizon/input.obj
 PULSE_HORIZON_RUNTIME_OBJ := $(BUILD_DIR)/apps/horizon/runtime.obj
@@ -216,6 +217,10 @@ $(PULSE_HORIZON_OBJ): src/apps/horizon/shell.c src/apps/horizon/include/horizon.
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
+$(PULSE_HORIZON_CATALOG_OBJ): src/apps/horizon/catalog.c src/apps/horizon/include/horizon.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
 $(PULSE_HORIZON_FOCUS_OBJ): src/apps/horizon/focus.c src/apps/horizon/include/horizon.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
@@ -232,10 +237,10 @@ $(PULSE_PANIC_OBJ): $(PULSE_DIR)/debug/panic.c $(PULSE_DIR)/include/panic.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
-$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_DAWN_ACPI_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_ATLAS_PCI_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_HORIZON_FOCUS_OBJ) $(PULSE_HORIZON_INPUT_OBJ) $(PULSE_HORIZON_RUNTIME_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
+$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_DAWN_ACPI_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_ATLAS_PCI_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_HORIZON_CATALOG_OBJ) $(PULSE_HORIZON_FOCUS_OBJ) $(PULSE_HORIZON_INPUT_OBJ) $(PULSE_HORIZON_RUNTIME_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
 	@mkdir -p $(dir $@)
 	$(LLD_LD) -m elf_x86_64 -nostdlib --build-id=none -T $(PULSE_DIR)/linker/x86_64.ld \
-		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_DAWN_ACPI_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_ATLAS_PCI_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_HORIZON_FOCUS_OBJ) $(PULSE_HORIZON_INPUT_OBJ) $(PULSE_HORIZON_RUNTIME_OBJ) $(PULSE_PANIC_OBJ)
+		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_DAWN_ACPI_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_ATLAS_PCI_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_HORIZON_CATALOG_OBJ) $(PULSE_HORIZON_FOCUS_OBJ) $(PULSE_HORIZON_INPUT_OBJ) $(PULSE_HORIZON_RUNTIME_OBJ) $(PULSE_PANIC_OBJ)
 
 $(PULSE_BIN): $(PULSE_ELF)
 	$(LLVM_OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $< $@
@@ -295,10 +300,10 @@ $(PULSE_CANVAS_TEST): tests/kernel/pulse_canvas_bootstrap.c src/ui/prism/framebu
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/platform/dawn/include -Isrc/ui/prism/include -Isrc/ui/canvas/include \
 		tests/kernel/pulse_canvas_bootstrap.c src/ui/prism/framebuffer.c src/ui/canvas/scene.c -o $@
 
-$(PULSE_HORIZON_TEST): tests/kernel/pulse_horizon_bootstrap.c src/ui/prism/framebuffer.c src/ui/canvas/scene.c src/apps/horizon/shell.c src/apps/horizon/focus.c
+$(PULSE_HORIZON_TEST): tests/kernel/pulse_horizon_bootstrap.c src/ui/prism/framebuffer.c src/ui/canvas/scene.c src/apps/horizon/shell.c src/apps/horizon/catalog.c src/apps/horizon/focus.c
 	@mkdir -p $(dir $@)
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/platform/dawn/include -Isrc/ui/prism/include -Isrc/ui/canvas/include -Isrc/apps/horizon/include \
-		tests/kernel/pulse_horizon_bootstrap.c src/ui/prism/framebuffer.c src/ui/canvas/scene.c src/apps/horizon/shell.c src/apps/horizon/focus.c -o $@
+		tests/kernel/pulse_horizon_bootstrap.c src/ui/prism/framebuffer.c src/ui/canvas/scene.c src/apps/horizon/shell.c src/apps/horizon/catalog.c src/apps/horizon/focus.c -o $@
 
 $(PULSE_HORIZON_FOCUS_TEST): tests/apps/horizon_focus.c src/apps/horizon/focus.c
 	@mkdir -p $(dir $@)
@@ -310,10 +315,10 @@ $(PULSE_HORIZON_INPUT_TEST): tests/apps/horizon_input.c src/apps/horizon/input.c
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/platform/dawn/include -Isrc/ui/prism/include -Isrc/ui/canvas/include -Isrc/drivers/atlas/include -Isrc/apps/horizon/include \
 		tests/apps/horizon_input.c src/apps/horizon/input.c src/apps/horizon/focus.c src/drivers/atlas/i8042-keyboard.c -o $@
 
-$(PULSE_HORIZON_RUNTIME_TEST): tests/apps/horizon_runtime.c src/apps/horizon/runtime.c src/apps/horizon/input.c src/apps/horizon/focus.c src/apps/horizon/shell.c src/ui/canvas/scene.c src/ui/prism/framebuffer.c src/drivers/atlas/i8042-keyboard.c
+$(PULSE_HORIZON_RUNTIME_TEST): tests/apps/horizon_runtime.c src/apps/horizon/runtime.c src/apps/horizon/input.c src/apps/horizon/focus.c src/apps/horizon/shell.c src/apps/horizon/catalog.c src/ui/canvas/scene.c src/ui/prism/framebuffer.c src/drivers/atlas/i8042-keyboard.c
 	@mkdir -p $(dir $@)
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/platform/dawn/include -Isrc/ui/prism/include -Isrc/ui/canvas/include -Isrc/drivers/atlas/include -Isrc/apps/horizon/include \
-		tests/apps/horizon_runtime.c src/apps/horizon/runtime.c src/apps/horizon/input.c src/apps/horizon/focus.c src/apps/horizon/shell.c src/ui/canvas/scene.c src/ui/prism/framebuffer.c src/drivers/atlas/i8042-keyboard.c -o $@
+		tests/apps/horizon_runtime.c src/apps/horizon/runtime.c src/apps/horizon/input.c src/apps/horizon/focus.c src/apps/horizon/shell.c src/apps/horizon/catalog.c src/ui/canvas/scene.c src/ui/prism/framebuffer.c src/drivers/atlas/i8042-keyboard.c -o $@
 
 $(PULSE_KEYBOARD_TEST): tests/kernel/pulse_keyboard_bootstrap.c src/drivers/atlas/i8042-keyboard.c
 	@mkdir -p $(dir $@)

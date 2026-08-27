@@ -25,6 +25,7 @@ int main(void) {
     };
     CANVAS_SCENE scene;
     HORIZON_DESKTOP_STATE focus_state;
+    const HORIZON_APPLICATION_DESCRIPTOR *application;
 
     if (!expect(!horizon_build_desktop_scene(319U, 480U, &scene), "too-narrow display is rejected") ||
         !expect(horizon_build_desktop_scene(640U, 480U, &scene), "desktop scene builds") ||
@@ -46,6 +47,14 @@ int main(void) {
                     scene.rectangle_count == 8U && scene.rectangles[7].rgb_color == UINT32_C(0xffcf5c) &&
                     scene.rectangles[7].x == 245U && scene.rectangles[7].y == 246U,
                 "selected focus adds an amber strip at the selected card") ||
+        !expect(horizon_application_at(0U) != (const void *)0 && horizon_application_at(0U)->id == HORIZON_APPLICATION_PROMPT &&
+                    horizon_application_at(1U) != (const void *)0 && horizon_application_at(1U)->id == HORIZON_APPLICATION_CUE &&
+                    horizon_application_at(2U) != (const void *)0 && horizon_application_at(2U)->id == HORIZON_APPLICATION_VECTOR &&
+                    horizon_application_at(HORIZON_NATIVE_APPLICATION_COUNT) == (const void *)0,
+                "catalog maps bounded desktop cards to native application IDs") ||
+        !expect(horizon_selected_application(&focus_state, &application) && application->id == HORIZON_APPLICATION_CUE &&
+                    application->label[0] == 'C',
+                "selected card resolves to the persisted native application descriptor") ||
         !expect(horizon_render_desktop_for_state(&framebuffer, &focus_state) &&
                     pixels[(246U * 640U) + 245U] == UINT32_C(0x00ffcf5c),
                 "selected state renders the amber strip") ||

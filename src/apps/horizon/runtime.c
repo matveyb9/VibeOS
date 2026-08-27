@@ -10,7 +10,7 @@ int horizon_desktop_runtime_initialize(PRISM_FRAMEBUFFER *framebuffer, HORIZON_D
         return 0;
     }
     runtime->initialized = 0U;
-    if (!horizon_desktop_state_initialize(&runtime->desktop_state, 3U) ||
+    if (!horizon_desktop_state_initialize(&runtime->desktop_state, HORIZON_NATIVE_APPLICATION_COUNT) ||
         !horizon_render_desktop_for_state(framebuffer, &runtime->desktop_state)) {
         return 0;
     }

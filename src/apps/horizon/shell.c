@@ -27,9 +27,19 @@ int horizon_build_desktop_scene_for_state(
     uint32_t focus_y;
     uint32_t selected_x;
     uint32_t selected_y;
+    const HORIZON_APPLICATION_DESCRIPTOR *first_application;
+    const HORIZON_APPLICATION_DESCRIPTOR *second_application;
+    const HORIZON_APPLICATION_DESCRIPTOR *third_application;
 
     if (scene == (void *)0 || width < HORIZON_MINIMUM_WIDTH || height < HORIZON_MINIMUM_HEIGHT ||
-        !horizon_desktop_state_is_valid(state) || state->window_count != 3U) {
+        !horizon_desktop_state_is_valid(state) || state->window_count != HORIZON_NATIVE_APPLICATION_COUNT) {
+        return 0;
+    }
+    first_application = horizon_application_at(0U);
+    second_application = horizon_application_at(1U);
+    third_application = horizon_application_at(2U);
+    if (first_application == (const void *)0 || second_application == (const void *)0 ||
+        third_application == (const void *)0) {
         return 0;
     }
     header_height = height / 12U;
@@ -63,17 +73,17 @@ int horizon_build_desktop_scene_for_state(
         return 0;
     }
     return canvas_scene_add_label(scene, gap, gap / 2U, 2U, UINT32_C(0xe6f1ff), "VIBEOS") &&
-           canvas_scene_add_label(scene, left_margin + gap, header_height + (gap * 2U), 2U, UINT32_C(0xe6f1ff), "HORIZON") &&
+           canvas_scene_add_label(scene, left_margin + gap, header_height + (gap * 2U), 2U, UINT32_C(0xe6f1ff), first_application->label) &&
            canvas_scene_add_label(scene, left_margin + card_width + (gap * 2U), header_height + (gap * 3U), 2U,
-                                  UINT32_C(0xe6f1ff), "GUIDE") &&
+                                  UINT32_C(0xe6f1ff), second_application->label) &&
            canvas_scene_add_label(scene, left_margin + (2U * card_width) + (gap * 3U), header_height + (gap * 2U),
-                                  2U, UINT32_C(0xe6f1ff), "PROMPT");
+                                  2U, UINT32_C(0xe6f1ff), third_application->label);
 }
 
 int horizon_build_desktop_scene(uint32_t width, uint32_t height, CANVAS_SCENE *scene) {
     HORIZON_DESKTOP_STATE desktop;
 
-    return horizon_desktop_state_initialize(&desktop, 3U) &&
+    return horizon_desktop_state_initialize(&desktop, HORIZON_NATIVE_APPLICATION_COUNT) &&
            horizon_build_desktop_scene_for_state(width, height, &desktop, scene);
 }
 
@@ -88,5 +98,6 @@ int horizon_render_desktop_for_state(PRISM_FRAMEBUFFER *framebuffer, const HORIZ
 int horizon_render_desktop(PRISM_FRAMEBUFFER *framebuffer) {
     HORIZON_DESKTOP_STATE desktop;
 
-    return horizon_desktop_state_initialize(&desktop, 3U) && horizon_render_desktop_for_state(framebuffer, &desktop);
+    return horizon_desktop_state_initialize(&desktop, HORIZON_NATIVE_APPLICATION_COUNT) &&
+           horizon_render_desktop_for_state(framebuffer, &desktop);
 }
