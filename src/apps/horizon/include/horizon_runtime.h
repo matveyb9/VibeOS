@@ -8,9 +8,15 @@
 
 #include <horizon_input.h>
 
+typedef enum {
+    HORIZON_NATIVE_REQUEST_NONE = 0,
+    HORIZON_NATIVE_REQUEST_FORMED = 1
+} HORIZON_NATIVE_REQUEST_STATUS;
+
 typedef struct {
     PRISM_FRAMEBUFFER framebuffer;
     HORIZON_DESKTOP_STATE desktop_state;
+    uint32_t native_request_status;
     uint32_t initialized;
 } HORIZON_DESKTOP_RUNTIME;
 
@@ -18,6 +24,7 @@ typedef struct {
     HORIZON_INPUT_PUMP_RESULT input;
     uint32_t redraw_performed;
     const HORIZON_APPLICATION_DESCRIPTOR *selected_application;
+    uint32_t native_request_status;
 } HORIZON_DESKTOP_RUNTIME_STEP_RESULT;
 
 int horizon_desktop_runtime_initialize(PRISM_FRAMEBUFFER *framebuffer, HORIZON_DESKTOP_RUNTIME *runtime);

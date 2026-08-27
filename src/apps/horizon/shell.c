@@ -15,8 +15,8 @@ static int horizon_add_rect(
     return canvas_scene_add_rect(scene, (CANVAS_RECT){x, y, width, height, color});
 }
 
-int horizon_build_desktop_scene_for_state(
-    uint32_t width, uint32_t height, const HORIZON_DESKTOP_STATE *state, CANVAS_SCENE *scene) {
+int horizon_build_desktop_scene_for_state_and_request(
+    uint32_t width, uint32_t height, const HORIZON_DESKTOP_STATE *state, uint32_t native_request_status, CANVAS_SCENE *scene) {
     uint32_t header_height;
     uint32_t dock_height;
     uint32_t card_width;
@@ -32,7 +32,8 @@ int horizon_build_desktop_scene_for_state(
     const HORIZON_APPLICATION_DESCRIPTOR *third_application;
 
     if (scene == (void *)0 || width < HORIZON_MINIMUM_WIDTH || height < HORIZON_MINIMUM_HEIGHT ||
-        !horizon_desktop_state_is_valid(state) || state->window_count != HORIZON_NATIVE_APPLICATION_COUNT) {
+        !horizon_desktop_state_is_valid(state) || state->window_count != HORIZON_NATIVE_APPLICATION_COUNT ||
+        native_request_status > 1U) {
         return 0;
     }
     first_application = horizon_application_at(0U);
@@ -77,7 +78,14 @@ int horizon_build_desktop_scene_for_state(
            canvas_scene_add_label(scene, left_margin + card_width + (gap * 2U), header_height + (gap * 3U), 2U,
                                   UINT32_C(0xe6f1ff), second_application->label) &&
            canvas_scene_add_label(scene, left_margin + (2U * card_width) + (gap * 3U), header_height + (gap * 2U),
-                                  2U, UINT32_C(0xe6f1ff), third_application->label);
+                                  2U, UINT32_C(0xe6f1ff), third_application->label) &&
+           (native_request_status == 0U ||
+            canvas_scene_add_label(scene, width / 4U, height - dock_height, 1U, UINT32_C(0xffcf5c), "REQUEST FORMED"));
+}
+
+int horizon_build_desktop_scene_for_state(
+    uint32_t width, uint32_t height, const HORIZON_DESKTOP_STATE *state, CANVAS_SCENE *scene) {
+    return horizon_build_desktop_scene_for_state_and_request(width, height, state, 0U, scene);
 }
 
 int horizon_build_desktop_scene(uint32_t width, uint32_t height, CANVAS_SCENE *scene) {
@@ -88,10 +96,16 @@ int horizon_build_desktop_scene(uint32_t width, uint32_t height, CANVAS_SCENE *s
 }
 
 int horizon_render_desktop_for_state(PRISM_FRAMEBUFFER *framebuffer, const HORIZON_DESKTOP_STATE *state) {
+    return horizon_render_desktop_for_state_and_request(framebuffer, state, 0U);
+}
+
+int horizon_render_desktop_for_state_and_request(
+    PRISM_FRAMEBUFFER *framebuffer, const HORIZON_DESKTOP_STATE *state, uint32_t native_request_status) {
     CANVAS_SCENE scene;
 
     return framebuffer != (void *)0 &&
-           horizon_build_desktop_scene_for_state(framebuffer->width, framebuffer->height, state, &scene) &&
+           horizon_build_desktop_scene_for_state_and_request(
+               framebuffer->width, framebuffer->height, state, native_request_status, &scene) &&
            canvas_scene_render(&scene, framebuffer);
 }
 

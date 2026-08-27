@@ -39,8 +39,10 @@ int main(void) {
                     result.redraw_performed == 1U && runtime.desktop_state.selected_window == 1U &&
                     result.selected_application != (const void *)0 &&
                     result.selected_application->id == HORIZON_APPLICATION_CUE &&
+                    result.native_request_status == HORIZON_NATIVE_REQUEST_FORMED &&
+                    runtime.native_request_status == HORIZON_NATIVE_REQUEST_FORMED &&
                     pixels[(246U * 640U) + 245U] == UINT32_C(0x00ffcf5c),
-                "following Enter selects the persisted focus and redraws amber strip") ||
+                "following Enter selects persisted focus and presents formed request status") ||
         !expect(!horizon_desktop_runtime_step(&runtime, 0U, &result), "invalid pump budget is rejected") ||
         !expect(!horizon_desktop_runtime_step((void *)0, 1U, &result), "null runtime step is rejected")) {
         return 1;
