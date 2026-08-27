@@ -23,6 +23,21 @@ int main(void) {
         {UINT64_C(0x3001), UINT64_C(0x0100)},
         {UINT64_C(0x8000), UINT64_C(0x1000)},
     };
+    DAWN_MEMORY_DESCRIPTOR overlapping_map[2] = {
+        {UINT64_C(0x1000), UINT64_C(0x3000), DAWN_MEMORY_USABLE, 0U},
+        {UINT64_C(0x2000), UINT64_C(0x1000), DAWN_MEMORY_RESERVED, 0U},
+    };
+    DAWN_MEMORY_DESCRIPTOR unordered_map[2] = {
+        {UINT64_C(0x4000), UINT64_C(0x1000), DAWN_MEMORY_RESERVED, 0U},
+        {UINT64_C(0x1000), UINT64_C(0x1000), DAWN_MEMORY_USABLE, 0U},
+    };
+    DAWN_MEMORY_DESCRIPTOR adjacent_map[2] = {
+        {UINT64_C(0x1000), UINT64_C(0x1000), DAWN_MEMORY_USABLE, 0U},
+        {UINT64_C(0x2000), UINT64_C(0x1000), DAWN_MEMORY_USABLE, 0U},
+    };
+    DAWN_MEMORY_DESCRIPTOR unalignable_map[1] = {
+        {UINT64_MAX - UINT64_C(0xff), UINT64_C(0xff), DAWN_MEMORY_USABLE, 0U},
+    };
     DAWN_CONTEXT context = {
         .magic = DAWN_CONTEXT_MAGIC,
         .version = DAWN_CONTEXT_VERSION,
@@ -43,8 +58,34 @@ int main(void) {
     uint64_t frame_three;
     uint64_t frame_four;
 
-    if (!expect(!pulse_memory_initialize(&(DAWN_CONTEXT){0}), "invalid descriptor stride is rejected") ||
-        !expect(pulse_memory_initialize(&context), "memory regions and boot reservations initialize") ||
+    if (!expect(!pulse_memory_initialize(&(DAWN_CONTEXT){0}), "invalid descriptor stride is rejected")) {
+        return 1;
+    }
+    context.memory_map_physical_address = (uint64_t)(uintptr_t)overlapping_map;
+    context.memory_map_size = sizeof(overlapping_map);
+    if (!expect(!pulse_memory_initialize(&context), "overlapping raw Dawn descriptors are rejected")) {
+        return 1;
+    }
+    context.memory_map_physical_address = (uint64_t)(uintptr_t)unordered_map;
+    context.memory_map_size = sizeof(unordered_map);
+    if (!expect(!pulse_memory_initialize(&context), "out-of-order raw Dawn descriptors are rejected")) {
+        return 1;
+    }
+    context.memory_map_physical_address = (uint64_t)(uintptr_t)adjacent_map;
+    context.memory_map_size = sizeof(adjacent_map);
+    if (!expect(pulse_memory_initialize(&context), "adjacent usable descriptors initialize") ||
+        !expect(pulse_memory_state()->region_count == 1U && pulse_memory_state()->usable_page_count == 2U,
+                "adjacent usable descriptors canonicalize into one region")) {
+        return 1;
+    }
+    context.memory_map_physical_address = (uint64_t)(uintptr_t)unalignable_map;
+    context.memory_map_size = sizeof(unalignable_map);
+    if (!expect(!pulse_memory_initialize(&context), "page-alignment overflow is rejected")) {
+        return 1;
+    }
+    context.memory_map_physical_address = (uint64_t)(uintptr_t)map;
+    context.memory_map_size = sizeof(map);
+    if (!expect(pulse_memory_initialize(&context), "memory regions and boot reservations initialize") ||
         !expect(!pulse_memory_take_frame_owned(PULSE_MEMORY_OWNER_NONE, &frame_one),
                     "empty frame owner is rejected") ||
         !expect(pulse_memory_take_frame(&frame_one), "first frame is available") ||

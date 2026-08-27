@@ -49,6 +49,8 @@ Prelude находит RSDP до final firmware exit. UEFI Prelude ищет EFI 
 
 Producer должен заполнить все required field перед transfer control и никогда не раскрывать Pulse live firmware service. Reservation range должны быть nonempty, non-overlapping, упорядочены по physical start и не иметь integer overflow. Consumer проверяет magic, version, minimum size, normalized descriptor stride/version, nonempty map, valid reservation metadata, valid stack, valid framebuffer, nonzero RSDP address и RSDP signature/checksum до использования поля. Unknown future memory kind остаются unusable, пока следующий Pulse contract revision явно их не примет.
 
+Текущий Pulse bootstrap allocator дополнительно воспринимает normalized memory map как строгую ordered physical partition: каждый raw descriptor должен быть nonempty, не иметь address overflow и начинаться на address не ниже limit предыдущего raw descriptor. Он отклоняет overlap и descending order, не пытаясь угадать priority. После inward rounding usable descriptor до frame по 4 KiB он канонически объединяет непосредственно соседние usable interval до allocation. Это всё ещё bounded early allocator, а не общий physical-memory manager: пока нет release frame, zone, NUMA policy и runtime memory hot-plug.
+
 ## Источники
 
 [1] [ACPI Specification 6.5, §5.2.5: Root System Description Pointer](https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html)

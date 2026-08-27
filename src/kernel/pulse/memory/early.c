@@ -150,13 +150,46 @@ static int pulse_frame_is_boot_reserved(uint64_t frame) {
     return 0;
 }
 
+static int pulse_memory_append_canonical_region(uint64_t region_base, uint64_t region_limit) {
+    uint64_t region_bytes;
+    PULSE_MEMORY_REGION *previous_region;
+
+    if (region_base >= region_limit || early_memory_state.usable_page_count > UINT64_MAX -
+                                                               ((region_limit - region_base) / PULSE_PAGE_SIZE)) {
+        return 0;
+    }
+    region_bytes = region_limit - region_base;
+    if (early_memory_state.region_count != 0U) {
+        previous_region = &early_memory_regions[early_memory_state.region_count - 1U];
+        if (region_base < previous_region->limit) {
+            return 0;
+        }
+        if (region_base == previous_region->limit) {
+            previous_region->limit = region_limit;
+            early_memory_state.usable_page_count += region_bytes / PULSE_PAGE_SIZE;
+            return 1;
+        }
+    }
+    if (early_memory_state.region_count >= PULSE_MEMORY_MAX_REGIONS) {
+        return 0;
+    }
+    early_memory_regions[early_memory_state.region_count].base = region_base;
+    early_memory_regions[early_memory_state.region_count].limit = region_limit;
+    early_memory_regions[early_memory_state.region_count].next_free_frame = region_base;
+    early_memory_state.usable_page_count += region_bytes / PULSE_PAGE_SIZE;
+    ++early_memory_state.region_count;
+    return 1;
+}
+
 int pulse_memory_initialize(const DAWN_CONTEXT *context) {
     uint64_t descriptor_index;
     uint64_t descriptor_count;
+    uint64_t previous_descriptor_limit = 0;
     const uint8_t *map_base;
 
     pulse_clear_memory_state();
-    if (context == (void *)0 || context->memory_descriptor_size != sizeof(DAWN_MEMORY_DESCRIPTOR) ||
+    if (context == (void *)0 || context->memory_map_physical_address == 0U || context->memory_map_size == 0U ||
+        context->memory_descriptor_size != sizeof(DAWN_MEMORY_DESCRIPTOR) ||
         context->memory_descriptor_version != DAWN_MEMORY_DESCRIPTOR_VERSION ||
         (context->memory_map_size % context->memory_descriptor_size) != 0U) {
         return 0;
@@ -172,30 +205,27 @@ int pulse_memory_initialize(const DAWN_CONTEXT *context) {
             (const DAWN_MEMORY_DESCRIPTOR *)(map_base + (descriptor_index * context->memory_descriptor_size));
         uint64_t region_base;
         uint64_t region_limit;
-        uint64_t region_bytes;
-        uint32_t region_index;
 
-        if (descriptor->kind != DAWN_MEMORY_USABLE || descriptor->byte_size == 0U ||
-            descriptor->byte_size > UINT64_MAX - descriptor->physical_start) {
+        if (descriptor->byte_size == 0U || descriptor->byte_size > UINT64_MAX - descriptor->physical_start) {
+            return 0;
+        }
+        if (descriptor_index != 0U && descriptor->physical_start < previous_descriptor_limit) {
+            return 0;
+        }
+        previous_descriptor_limit = descriptor->physical_start + descriptor->byte_size;
+        if (descriptor->kind != DAWN_MEMORY_USABLE) {
             continue;
+        }
+        if (previous_descriptor_limit > UINT64_MAX - (PULSE_PAGE_SIZE - 1U)) {
+            return 0;
         }
 
         region_base = pulse_align_up(descriptor->physical_start, PULSE_PAGE_SIZE);
         region_limit = pulse_align_down(
             descriptor->physical_start + descriptor->byte_size,
             PULSE_PAGE_SIZE);
-        if (region_base >= region_limit || early_memory_state.region_count >= PULSE_MEMORY_MAX_REGIONS) {
-            return 0;
-        }
-
-        region_index = early_memory_state.region_count;
-        region_bytes = region_limit - region_base;
-        early_memory_regions[region_index].base = region_base;
-        early_memory_regions[region_index].limit = region_limit;
-        early_memory_regions[region_index].next_free_frame = region_base;
-        early_memory_state.usable_page_count += region_bytes / PULSE_PAGE_SIZE;
+        if (region_base >= region_limit || !pulse_memory_append_canonical_region(region_base, region_limit)) return 0;
         early_memory_state.boot_reserved_page_count += pulse_reserved_pages_in_region(region_base, region_limit);
-        ++early_memory_state.region_count;
     }
 
     if (early_memory_state.region_count == 0U) {

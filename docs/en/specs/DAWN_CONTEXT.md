@@ -49,6 +49,8 @@ Prelude discovers the RSDP before final firmware exit. UEFI Prelude searches EFI
 
 The producer must populate all required fields before transferring control and must never expose live firmware services to Pulse. Reservation ranges must be nonempty, non-overlapping, ordered by physical start, and free of integer overflow. The consumer validates magic, version, minimum size, normalized descriptor stride/version, a nonempty map, valid reservation metadata, valid stack, valid framebuffer, a nonzero RSDP address, and the RSDP signature/checksum before using the field. Unknown future memory kinds remain unusable until a later Pulse contract revision accepts them.
 
+The current Pulse bootstrap allocator also treats the normalized memory map as a strict ordered physical partition: every raw descriptor must be nonempty, free of address overflow, and begin at or after the preceding raw descriptor limit. It rejects overlap and descending order rather than guessing precedence. After rounding usable descriptors inward to 4 KiB frames, it canonically merges directly adjacent usable intervals before allocation. This remains a bounded early allocator, not a general physical-memory manager, and does not yet provide frame release, zones, NUMA policy, or runtime memory hot-plug.
+
 ## References
 
 [1] [ACPI Specification 6.5, §5.2.5: Root System Description Pointer](https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html)
