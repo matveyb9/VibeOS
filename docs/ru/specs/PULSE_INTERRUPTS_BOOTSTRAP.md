@@ -12,9 +12,11 @@ Pulse настраивает полную Interrupt Descriptor Table из 256 з
 
 Maskable interrupts остаются выключенными. После загрузки `IDTR` Pulse намеренно выполняет `INT3`; breakpoint handler выводит в тестовый канал QEMU строку `PULSE: breakpoint trap handled` и завершает emulator. Это подтверждает активную IDT, gate offset, selector и exception control transfer без преждевременного включения device interrupts.
 
+У Pulse также есть отдельная pure controller-selection policy. Она потребляет только уже проверенные bounded MADT metadata: PIC остаётся активным bootstrap controller, а наличие хотя бы одной записи Local APIC и одной I/O APIC отмечает только eligibility будущего APIC handoff. Policy не выполняет port I/O, не меняет PIC mask и никогда не map или не программирует APIC.
+
 ## Текущие ограничения
 
-В bootstrap пока нет register-frame capture, normalisation error code, return path, IST stack, PIC/APIC routing, timer tick и recovery UI. Default handler намеренно является terminal. Эти возможности будут добавлены до того, как Pulse включит external interrupts или scheduling work.
+В bootstrap пока нет register-frame capture, normalisation error code, return path, IST stack, PIC/APIC routing, timer tick и recovery UI. Default handler намеренно является terminal. APIC eligibility не является APIC enablement, interrupt rerouting, processor startup или SMP support. Эти возможности будут добавлены до того, как Pulse включит external interrupts или scheduling work.
 
 ## Источник
 

@@ -22,6 +22,7 @@ PULSE_DAWN_MADT_X86_OBJ := $(BUILD_DIR)/pulse/dawn/acpi-madt-x86.obj
 PULSE_MEMORY_OBJ := $(BUILD_DIR)/pulse/memory/early.obj
 PULSE_PAGING_OBJ := $(BUILD_DIR)/pulse/memory/paging-x86_64.obj
 PULSE_INTERRUPTS_OBJ := $(BUILD_DIR)/pulse/interrupts/idt-x86_64.obj
+PULSE_INTERRUPT_CONTROLLER_OBJ := $(BUILD_DIR)/pulse/interrupts/controller-policy.obj
 PULSE_SCHEDULER_OBJ := $(BUILD_DIR)/pulse/schedule/round-robin.obj
 PULSE_CONTEXT_OBJ := $(BUILD_DIR)/pulse/schedule/context.obj
 PULSE_TIMER_OBJ := $(BUILD_DIR)/pulse/time/pit-x86_64.obj
@@ -52,6 +53,7 @@ PULSE_BIN := $(BUILD_DIR)/pulse/pulse.bin
 PULSE_MEMORY_TEST := $(BUILD_DIR)/tests/pulse-memory-bootstrap
 PULSE_PAGING_TEST := $(BUILD_DIR)/tests/pulse-paging-bootstrap
 PULSE_INTERRUPTS_TEST := $(BUILD_DIR)/tests/pulse-interrupts-bootstrap
+PULSE_INTERRUPT_CONTROLLER_TEST := $(BUILD_DIR)/tests/pulse-interrupt-controller-policy
 PULSE_SCHEDULER_TEST := $(BUILD_DIR)/tests/pulse-scheduler-bootstrap
 PULSE_CONTEXT_TEST := $(BUILD_DIR)/tests/pulse-context-bootstrap
 PULSE_TIMER_TEST := $(BUILD_DIR)/tests/pulse-timer-bootstrap
@@ -139,6 +141,10 @@ $(PULSE_PAGING_OBJ): $(PULSE_DIR)/memory/paging-x86_64.c $(PULSE_DIR)/include/pa
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
 $(PULSE_INTERRUPTS_OBJ): $(PULSE_DIR)/interrupts/idt-x86_64.c $(PULSE_DIR)/include/interrupts.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
+$(PULSE_INTERRUPT_CONTROLLER_OBJ): $(PULSE_DIR)/interrupts/controller-policy.c $(PULSE_DIR)/include/interrupt-controller.h src/platform/dawn/include/dawn_acpi.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
@@ -242,10 +248,10 @@ $(PULSE_PANIC_OBJ): $(PULSE_DIR)/debug/panic.c $(PULSE_DIR)/include/panic.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
-$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_DAWN_ACPI_OBJ) $(PULSE_DAWN_MADT_X86_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_ATLAS_PCI_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_HORIZON_CATALOG_OBJ) $(PULSE_HORIZON_FOCUS_OBJ) $(PULSE_HORIZON_INPUT_OBJ) $(PULSE_HORIZON_RUNTIME_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
+$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_DAWN_ACPI_OBJ) $(PULSE_DAWN_MADT_X86_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_INTERRUPT_CONTROLLER_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_ATLAS_PCI_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_HORIZON_CATALOG_OBJ) $(PULSE_HORIZON_FOCUS_OBJ) $(PULSE_HORIZON_INPUT_OBJ) $(PULSE_HORIZON_RUNTIME_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
 	@mkdir -p $(dir $@)
 	$(LLD_LD) -m elf_x86_64 -nostdlib --build-id=none -T $(PULSE_DIR)/linker/x86_64.ld \
-		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_DAWN_ACPI_OBJ) $(PULSE_DAWN_MADT_X86_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_ATLAS_PCI_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_HORIZON_CATALOG_OBJ) $(PULSE_HORIZON_FOCUS_OBJ) $(PULSE_HORIZON_INPUT_OBJ) $(PULSE_HORIZON_RUNTIME_OBJ) $(PULSE_PANIC_OBJ)
+		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_DAWN_ACPI_OBJ) $(PULSE_DAWN_MADT_X86_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_INTERRUPT_CONTROLLER_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_ATLAS_PCI_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_HORIZON_CATALOG_OBJ) $(PULSE_HORIZON_FOCUS_OBJ) $(PULSE_HORIZON_INPUT_OBJ) $(PULSE_HORIZON_RUNTIME_OBJ) $(PULSE_PANIC_OBJ)
 
 $(PULSE_BIN): $(PULSE_ELF)
 	$(LLVM_OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $< $@
@@ -264,6 +270,11 @@ $(PULSE_INTERRUPTS_TEST): tests/kernel/pulse_interrupts_bootstrap.c $(PULSE_DIR)
 	@mkdir -p $(dir $@)
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include \
 		tests/kernel/pulse_interrupts_bootstrap.c $(PULSE_DIR)/interrupts/idt-x86_64.c -o $@
+
+$(PULSE_INTERRUPT_CONTROLLER_TEST): tests/kernel/pulse_interrupt_controller_policy.c $(PULSE_DIR)/interrupts/controller-policy.c $(PULSE_DIR)/include/interrupt-controller.h src/platform/dawn/include/dawn_acpi.h
+	@mkdir -p $(dir $@)
+	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include -Isrc/platform/dawn/include \
+		tests/kernel/pulse_interrupt_controller_policy.c $(PULSE_DIR)/interrupts/controller-policy.c -o $@
 
 $(PULSE_SCHEDULER_TEST): tests/kernel/pulse_scheduler_bootstrap.c $(PULSE_DIR)/schedule/round-robin.c $(PULSE_DIR)/include/scheduler.h
 	@mkdir -p $(dir $@)
@@ -385,7 +396,7 @@ $(BIOS_IMAGE): $(BIOS_STAGE1_BIN) $(BIOS_STAGE2_BIN) $(PULSE_BIN)
 	dd if=$(PULSE_BIN) of=$@ bs=512 seek=$$((1 + $(PRELUDE_BIOS_STAGE2_SECTORS))) conv=notrunc
 
 check-uefi: $(ESP_IMAGE)
-	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PARCEL: native launch admission verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: keyboard event queue verified" "ATLAS: PCI inventory verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "DAWN: ACPI child table inventory verified" "DAWN: ACPI MADT metadata inventory verified" "DAWN: ACPI x86 APIC metadata inventory verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
+	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PARCEL: native launch admission verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: keyboard event queue verified" "ATLAS: PCI inventory verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "DAWN: ACPI child table inventory verified" "DAWN: ACPI MADT metadata inventory verified" "DAWN: ACPI x86 APIC metadata inventory verified" "PULSE: PIC controller policy verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
 
 check-keyboard:
 	$(MAKE) BUILD_DIR=build-keyboard PULSE_PROBE=keyboard uefi-image
@@ -397,10 +408,11 @@ check-bios: $(BIOS_IMAGE)
 check-panic: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE) "PULSE PANIC: unhandled interrupt"
 
-test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TEST) $(PULSE_SCHEDULER_TEST) $(PULSE_CONTEXT_TEST) $(PULSE_TIMER_TEST) $(PULSE_RELAY_TEST) $(PULSE_VAULT_TEST) $(PULSE_SESSION_TEST) $(PULSE_PARCEL_TEST) $(PULSE_CANVAS_TEST) $(PULSE_HORIZON_TEST) $(PULSE_HORIZON_FOCUS_TEST) $(PULSE_HORIZON_INPUT_TEST) $(PULSE_HORIZON_RUNTIME_TEST) $(PULSE_KEYBOARD_TEST) $(PULSE_PCI_TEST) $(DAWN_ACPI_TEST)
+test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TEST) $(PULSE_INTERRUPT_CONTROLLER_TEST) $(PULSE_SCHEDULER_TEST) $(PULSE_CONTEXT_TEST) $(PULSE_TIMER_TEST) $(PULSE_RELAY_TEST) $(PULSE_VAULT_TEST) $(PULSE_SESSION_TEST) $(PULSE_PARCEL_TEST) $(PULSE_CANVAS_TEST) $(PULSE_HORIZON_TEST) $(PULSE_HORIZON_FOCUS_TEST) $(PULSE_HORIZON_INPUT_TEST) $(PULSE_HORIZON_RUNTIME_TEST) $(PULSE_KEYBOARD_TEST) $(PULSE_PCI_TEST) $(DAWN_ACPI_TEST)
 	$(PULSE_MEMORY_TEST)
 	$(PULSE_PAGING_TEST)
 	$(PULSE_INTERRUPTS_TEST)
+	$(PULSE_INTERRUPT_CONTROLLER_TEST)
 	$(PULSE_SCHEDULER_TEST)
 	$(PULSE_CONTEXT_TEST)
 	$(PULSE_TIMER_TEST)
