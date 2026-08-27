@@ -33,7 +33,7 @@ int horizon_build_desktop_scene_for_state_and_request(
 
     if (scene == (void *)0 || width < HORIZON_MINIMUM_WIDTH || height < HORIZON_MINIMUM_HEIGHT ||
         !horizon_desktop_state_is_valid(state) || state->window_count != HORIZON_NATIVE_APPLICATION_COUNT ||
-        native_request_status > 1U) {
+        native_request_status > 4U) {
         return 0;
     }
     first_application = horizon_application_at(0U);

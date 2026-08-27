@@ -10,7 +10,10 @@
 
 typedef enum {
     HORIZON_NATIVE_REQUEST_NONE = 0,
-    HORIZON_NATIVE_REQUEST_FORMED = 1
+    HORIZON_NATIVE_REQUEST_FORMED = 1,
+    HORIZON_NATIVE_REQUEST_ADMITTED = 2,
+    HORIZON_NATIVE_REQUEST_REJECTED_NOT_INSTALLED = 3,
+    HORIZON_NATIVE_REQUEST_REJECTED_INVALID = 4
 } HORIZON_NATIVE_REQUEST_STATUS;
 
 typedef struct {
@@ -32,5 +35,8 @@ int horizon_desktop_runtime_step(
     HORIZON_DESKTOP_RUNTIME *runtime,
     uint32_t maximum_events,
     HORIZON_DESKTOP_RUNTIME_STEP_RESULT *result);
+int horizon_desktop_runtime_set_native_request_status(
+    HORIZON_DESKTOP_RUNTIME *runtime,
+    HORIZON_NATIVE_REQUEST_STATUS status);
 
 #endif

@@ -43,6 +43,12 @@ int main(void) {
                     runtime.native_request_status == HORIZON_NATIVE_REQUEST_FORMED &&
                     pixels[(246U * 640U) + 245U] == UINT32_C(0x00ffcf5c),
                 "following Enter selects persisted focus and presents formed request status") ||
+        !expect(horizon_desktop_runtime_set_native_request_status(
+                    &runtime, HORIZON_NATIVE_REQUEST_REJECTED_NOT_INSTALLED) &&
+                    runtime.native_request_status == HORIZON_NATIVE_REQUEST_REJECTED_NOT_INSTALLED,
+                "caller can present an immutable not-installed admission result") ||
+        !expect(!horizon_desktop_runtime_set_native_request_status(&runtime, (HORIZON_NATIVE_REQUEST_STATUS)99U),
+                "unknown presentation status is rejected") ||
         !expect(!horizon_desktop_runtime_step(&runtime, 0U, &result), "invalid pump budget is rejected") ||
         !expect(!horizon_desktop_runtime_step((void *)0, 1U, &result), "null runtime step is rejected")) {
         return 1;

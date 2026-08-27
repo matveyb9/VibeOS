@@ -50,3 +50,14 @@ int horizon_desktop_runtime_step(
     }
     return 1;
 }
+
+int horizon_desktop_runtime_set_native_request_status(
+    HORIZON_DESKTOP_RUNTIME *runtime,
+    HORIZON_NATIVE_REQUEST_STATUS status) {
+    if (runtime == (void *)0 || runtime->initialized == 0U || status > HORIZON_NATIVE_REQUEST_REJECTED_INVALID) {
+        return 0;
+    }
+    runtime->native_request_status = (uint32_t)status;
+    return horizon_render_desktop_for_state_and_request(
+        &runtime->framebuffer, &runtime->desktop_state, runtime->native_request_status);
+}
