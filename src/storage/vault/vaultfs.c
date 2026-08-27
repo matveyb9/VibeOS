@@ -326,7 +326,7 @@ int vaultfs_root_directory_block_load(
         !atlas_block_read(device, superblock->root_directory_block, root_block, sizeof(*root_block))) {
         return 0;
     }
-    return vaultfs_root_directory_block_valid(root_block);
+    return vaultfs_root_directory_block_valid(root_block) && root_block->generation == superblock->generation;
 }
 
 int vaultfs_runtime_probe(void) {

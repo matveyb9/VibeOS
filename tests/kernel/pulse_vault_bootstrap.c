@@ -64,6 +64,8 @@ int main(void) {
                     loaded_root_block.generation == UINT64_C(8) && loaded_root_block.entry_count == 1U &&
                     loaded_root_block.entries[0].object_id == UINT64_C(17),
                     "root directory block loads through sealed superblock reference") ||
+        !expect(!vaultfs_root_directory_block_load(&device, &primary, &loaded_root_block),
+                    "root directory block generation mismatch is rejected") ||
         !expect(vaultfs_superblock_load_latest(&device, 0U, 1U, &selected) &&
                     selected.generation == UINT64_C(8) && selected.root_directory_block == UINT64_C(2),
                     "newer valid superblock is selected")) {
