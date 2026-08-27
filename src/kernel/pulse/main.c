@@ -11,6 +11,7 @@
 #include "interrupts.h"
 #include "scheduler.h"
 #include "context.h"
+#include "timer.h"
 
 static void pulse_debug_putc(char character) {
     __asm__ volatile("outb %0, %w1" : : "a"(character), "d"((uint16_t)0x402));
@@ -62,8 +63,10 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
             pulse_debug_write("PULSE: task context bootstrap failed\n");
             pulse_debug_exit();
         }
-        pulse_interrupts_trigger_breakpoint();
-        pulse_debug_write("PULSE: breakpoint dispatch unexpectedly returned\n");
+        pulse_timer_start_probe();
+        for (;;) {
+            __asm__ volatile("hlt");
+        }
 #endif
     } else {
         pulse_debug_write("PULSE: early interrupt bootstrap failed\n");

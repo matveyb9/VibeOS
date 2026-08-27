@@ -7,6 +7,7 @@
 
 void pulse_x86_default_interrupt(void) {}
 void pulse_x86_breakpoint_interrupt(void) {}
+void pulse_x86_timer_interrupt(void) {}
 
 static int expect(int condition, const char *message) {
     if (!condition) {

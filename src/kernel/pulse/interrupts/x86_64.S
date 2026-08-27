@@ -18,6 +18,13 @@ pulse_x86_default_interrupt:
 pulse_x86_breakpoint_interrupt:
 	cli
 	leaq pulse_x86_breakpoint_message(%rip), %rsi
+	jmp pulse_x86_debug_exit
+
+	.global pulse_x86_timer_interrupt
+	.type pulse_x86_timer_interrupt,@function
+pulse_x86_timer_interrupt:
+	cli
+	leaq pulse_x86_timer_message(%rip), %rsi
 
 pulse_x86_debug_exit:
 	cld
@@ -39,3 +46,5 @@ pulse_x86_debug_exit:
 	.section .rodata,"a"
 pulse_x86_breakpoint_message:
 	.asciz "PULSE: breakpoint trap handled\n"
+pulse_x86_timer_message:
+	.asciz "PULSE: timer interrupt handled\n"

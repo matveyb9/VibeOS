@@ -17,6 +17,7 @@ typedef struct __attribute__((packed)) {
 
 extern void pulse_x86_default_interrupt(void);
 extern void pulse_x86_breakpoint_interrupt(void);
+extern void pulse_x86_timer_interrupt(void);
 
 static PULSE_X86_IDT_GATE early_idt[PULSE_X86_IDT_ENTRIES];
 
@@ -55,6 +56,7 @@ int pulse_interrupts_build_table(
         pulse_set_gate(&table[vector], code_selector, default_handler);
     }
     pulse_set_gate(&table[PULSE_X86_BREAKPOINT_VECTOR], code_selector, breakpoint_handler);
+    pulse_set_gate(&table[PULSE_X86_TIMER_VECTOR], code_selector, (uintptr_t)pulse_x86_timer_interrupt);
     return 1;
 }
 

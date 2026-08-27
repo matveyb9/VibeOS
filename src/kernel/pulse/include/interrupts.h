@@ -7,6 +7,7 @@
 
 #define PULSE_X86_IDT_ENTRIES UINT16_C(256)
 #define PULSE_X86_BREAKPOINT_VECTOR UINT8_C(3)
+#define PULSE_X86_TIMER_VECTOR UINT8_C(32)
 
 typedef struct __attribute__((packed)) {
     uint16_t offset_low;
