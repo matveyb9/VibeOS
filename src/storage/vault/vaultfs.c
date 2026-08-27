@@ -21,6 +21,14 @@ static uint32_t vaultfs_superblock_checksum(const VAULTFS_SUPERBLOCK *superblock
     return vaultfs_crc32(superblock, sizeof(VAULTFS_SUPERBLOCK) - sizeof(superblock->checksum));
 }
 
+static void vaultfs_superblock_seal(VAULTFS_SUPERBLOCK *superblock) {
+    superblock->checksum = vaultfs_superblock_checksum(superblock);
+}
+
+static int vaultfs_system_slot_valid(uint64_t slot) {
+    return slot == 0U || slot == 1U;
+}
+
 static uint32_t vaultfs_journal_checksum(const VAULTFS_JOURNAL_ENTRY *entry) {
     return vaultfs_crc32(entry, sizeof(VAULTFS_JOURNAL_ENTRY) - sizeof(entry->checksum));
 }
@@ -46,15 +54,18 @@ void vaultfs_superblock_initialize(
         superblock->block_bytes = (uint32_t)ATLAS_BLOCK_BYTES;
         superblock->generation = generation;
         superblock->active_system_slot = active_system_slot;
+        superblock->pending_system_slot = VAULTFS_SYSTEM_SLOT_NONE;
         superblock->journal_sequence = journal_sequence;
-        superblock->checksum = vaultfs_superblock_checksum(superblock);
+        vaultfs_superblock_seal(superblock);
     }
 }
 
 int vaultfs_superblock_valid(const VAULTFS_SUPERBLOCK *superblock) {
     return superblock != (void *)0 && superblock->magic == VAULTFS_SUPERBLOCK_MAGIC &&
            superblock->format_version == VAULTFS_FORMAT_VERSION &&
-           superblock->block_bytes == ATLAS_BLOCK_BYTES &&
+           superblock->block_bytes == ATLAS_BLOCK_BYTES && vaultfs_system_slot_valid(superblock->active_system_slot) &&
+           (superblock->pending_system_slot == VAULTFS_SYSTEM_SLOT_NONE ||
+            vaultfs_system_slot_valid(superblock->pending_system_slot)) &&
            superblock->checksum == vaultfs_superblock_checksum(superblock);
 }
 
@@ -127,6 +138,36 @@ int vaultfs_journal_commit(VAULTFS_JOURNAL_ENTRY *entry) {
     return 1;
 }
 
+int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot) {
+    if (!vaultfs_superblock_valid(superblock) || !vaultfs_system_slot_valid(target_slot) ||
+        target_slot == superblock->active_system_slot) {
+        return 0;
+    }
+    superblock->pending_system_slot = target_slot;
+    vaultfs_superblock_seal(superblock);
+    return 1;
+}
+
+int vaultfs_system_slot_confirm(VAULTFS_SUPERBLOCK *superblock) {
+    if (!vaultfs_superblock_valid(superblock) ||
+        !vaultfs_system_slot_valid(superblock->pending_system_slot)) {
+        return 0;
+    }
+    superblock->active_system_slot = superblock->pending_system_slot;
+    superblock->pending_system_slot = VAULTFS_SYSTEM_SLOT_NONE;
+    ++superblock->generation;
+    vaultfs_superblock_seal(superblock);
+    return 1;
+}
+
+int vaultfs_system_slot_recover(const VAULTFS_SUPERBLOCK *superblock, uint64_t *boot_slot) {
+    if (!vaultfs_superblock_valid(superblock) || boot_slot == (void *)0) {
+        return 0;
+    }
+    *boot_slot = superblock->active_system_slot;
+    return 1;
+}
+
 int vaultfs_runtime_probe(void) {
     static uint8_t storage[ATLAS_BLOCK_BYTES * 4U];
     ATLAS_RAM_BLOCK_DEVICE device;
@@ -134,6 +175,7 @@ int vaultfs_runtime_probe(void) {
     VAULTFS_SUPERBLOCK backup;
     VAULTFS_SUPERBLOCK recovered;
     VAULTFS_JOURNAL_ENTRY journal_entry;
+    uint64_t boot_slot;
 
     if (!atlas_ram_block_device_init(&device, storage, sizeof(storage))) {
         return 0;
@@ -153,5 +195,8 @@ int vaultfs_runtime_probe(void) {
     vaultfs_journal_prepare(&journal_entry, UINT64_C(51), UINT64_C(3), UINT32_C(0x12345678));
     return recovered.generation == UINT64_C(4) && recovered.active_system_slot == 1U &&
            vaultfs_journal_valid(&journal_entry) && vaultfs_journal_commit(&journal_entry) &&
-           vaultfs_journal_valid(&journal_entry) && journal_entry.state == VAULTFS_JOURNAL_COMMITTED;
+           vaultfs_journal_valid(&journal_entry) && journal_entry.state == VAULTFS_JOURNAL_COMMITTED &&
+           vaultfs_system_slot_stage(&recovered, 0U) && vaultfs_system_slot_recover(&recovered, &boot_slot) &&
+           boot_slot == 1U && vaultfs_system_slot_confirm(&recovered) &&
+           vaultfs_system_slot_recover(&recovered, &boot_slot) && boot_slot == 0U;
 }

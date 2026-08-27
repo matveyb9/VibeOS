@@ -8,6 +8,7 @@
 #define VAULTFS_SUPERBLOCK_MAGIC UINT64_C(0x5641554c54465331)
 #define VAULTFS_FORMAT_VERSION UINT32_C(1)
 #define VAULTFS_JOURNAL_MAGIC UINT64_C(0x5641554c544a4e31)
+#define VAULTFS_SYSTEM_SLOT_NONE UINT64_MAX
 
 typedef enum {
     VAULTFS_JOURNAL_PREPARED = 1,
@@ -20,6 +21,7 @@ typedef struct __attribute__((packed)) {
     uint32_t block_bytes;
     uint64_t generation;
     uint64_t active_system_slot;
+    uint64_t pending_system_slot;
     uint64_t journal_sequence;
     uint32_t checksum;
 } VAULTFS_SUPERBLOCK;
@@ -57,6 +59,9 @@ void vaultfs_journal_prepare(
     uint32_t payload_checksum);
 int vaultfs_journal_valid(const VAULTFS_JOURNAL_ENTRY *entry);
 int vaultfs_journal_commit(VAULTFS_JOURNAL_ENTRY *entry);
+int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot);
+int vaultfs_system_slot_confirm(VAULTFS_SUPERBLOCK *superblock);
+int vaultfs_system_slot_recover(const VAULTFS_SUPERBLOCK *superblock, uint64_t *boot_slot);
 int vaultfs_runtime_probe(void);
 
 #endif

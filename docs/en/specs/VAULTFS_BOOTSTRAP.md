@@ -16,5 +16,6 @@ Atlas now defines the independent block-device boundary consumed by storage code
 | Selection | Highest valid generation, primary on a tie |
 | System slot | Encoded as `active_system_slot` for future A/B control |
 | Journal | Prepared → committed metadata-journal entry state machine |
+| A/B state | Active and pending system-slot state in every superblock |
 
-The QEMU probe writes a newer primary and an older backup, corrupts the primary checksum, confirms that recovery selects the backup slot, and seals then commits a metadata-journal entry. Host tests independently cover device validation, normal generation ordering, invalid-backup fallback, inverse runtime recovery, commit immutability, and journal tampering. Extents, B+ trees, persistent journal placement, physical-device drivers, installer flows, and Recovery UI remain subsequent VaultFS work.
+The QEMU probe writes a newer primary and an older backup, corrupts the primary checksum, confirms that recovery selects the backup slot, seals then commits a metadata-journal entry, and stages an A/B system-slot change. Recovery always boots the active slot until the pending slot is explicitly confirmed; confirmation promotes it and advances the generation. Host tests independently cover device validation, normal generation ordering, invalid-backup fallback, inverse runtime recovery, commit immutability, journal tampering, and A/B staging. Extents, B+ trees, persistent journal placement, physical-device drivers, installer flows, and Recovery UI remain subsequent VaultFS work.

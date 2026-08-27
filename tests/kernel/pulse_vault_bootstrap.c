@@ -21,6 +21,7 @@ int main(void) {
     VAULTFS_SUPERBLOCK backup;
     VAULTFS_SUPERBLOCK selected;
     VAULTFS_JOURNAL_ENTRY journal_entry;
+    uint64_t boot_slot;
 
     if (!expect(!atlas_ram_block_device_init(&device, storage, ATLAS_BLOCK_BYTES - 1U),
                     "unaligned block device size is rejected") ||
@@ -60,6 +61,16 @@ int main(void) {
 
     journal_entry.target_block ^= UINT64_C(1);
     if (!expect(!vaultfs_journal_valid(&journal_entry), "tampered journal entry is rejected")) {
+        return 1;
+    }
+
+    if (!expect(vaultfs_system_slot_stage(&primary, 1U), "alternate system slot stages") ||
+        !expect(vaultfs_system_slot_recover(&primary, &boot_slot) && boot_slot == 0U,
+                    "unconfirmed slot preserves active boot slot") ||
+        !expect(vaultfs_system_slot_confirm(&primary), "staged system slot confirms") ||
+        !expect(vaultfs_system_slot_recover(&primary, &boot_slot) && boot_slot == 1U,
+                    "confirmed slot becomes active") ||
+        !expect(!vaultfs_system_slot_stage(&primary, 1U), "active slot cannot stage to itself")) {
         return 1;
     }
 

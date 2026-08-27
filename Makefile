@@ -210,7 +210,7 @@ $(ESP_IMAGE): $(PRELUDE_EFI)
 	mcopy -i $@ $(PRELUDE_EFI) ::/EFI/BOOT/BOOTX64.EFI
 
 check-uefi: $(ESP_IMAGE)
-	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
+	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
 
 check-panic: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE) "PULSE PANIC: unhandled interrupt"
