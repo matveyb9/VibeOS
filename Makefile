@@ -16,11 +16,13 @@ PULSE_MAIN_OBJ := $(BUILD_DIR)/pulse/main.obj
 PULSE_MEMORY_OBJ := $(BUILD_DIR)/pulse/memory/early.obj
 PULSE_PAGING_OBJ := $(BUILD_DIR)/pulse/memory/paging-x86_64.obj
 PULSE_INTERRUPTS_OBJ := $(BUILD_DIR)/pulse/interrupts/idt-x86_64.obj
+PULSE_SCHEDULER_OBJ := $(BUILD_DIR)/pulse/schedule/round-robin.obj
 PULSE_ELF := $(BUILD_DIR)/pulse/PULSE.ELF
 PULSE_BIN := $(BUILD_DIR)/pulse/pulse.bin
 PULSE_MEMORY_TEST := $(BUILD_DIR)/tests/pulse-memory-bootstrap
 PULSE_PAGING_TEST := $(BUILD_DIR)/tests/pulse-paging-bootstrap
 PULSE_INTERRUPTS_TEST := $(BUILD_DIR)/tests/pulse-interrupts-bootstrap
+PULSE_SCHEDULER_TEST := $(BUILD_DIR)/tests/pulse-scheduler-bootstrap
 ESP_IMAGE := $(BUILD_DIR)/vibeos-uefi-esp.img
 ESP_IMAGE_BYTES := 67108864
 
@@ -72,10 +74,14 @@ $(PULSE_INTERRUPTS_OBJ): $(PULSE_DIR)/interrupts/idt-x86_64.c $(PULSE_DIR)/inclu
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
-$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_DIR)/linker/x86_64.ld
+$(PULSE_SCHEDULER_OBJ): $(PULSE_DIR)/schedule/round-robin.c $(PULSE_DIR)/include/scheduler.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
+$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_DIR)/linker/x86_64.ld
 	@mkdir -p $(dir $@)
 	$(LLD_LD) -m elf_x86_64 -nostdlib --build-id=none -T $(PULSE_DIR)/linker/x86_64.ld \
-		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ)
+		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ)
 
 $(PULSE_BIN): $(PULSE_ELF)
 	$(LLVM_OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $< $@
@@ -94,6 +100,11 @@ $(PULSE_INTERRUPTS_TEST): tests/kernel/pulse_interrupts_bootstrap.c $(PULSE_DIR)
 	@mkdir -p $(dir $@)
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include \
 		tests/kernel/pulse_interrupts_bootstrap.c $(PULSE_DIR)/interrupts/idt-x86_64.c -o $@
+
+$(PULSE_SCHEDULER_TEST): tests/kernel/pulse_scheduler_bootstrap.c $(PULSE_DIR)/schedule/round-robin.c $(PULSE_DIR)/include/scheduler.h
+	@mkdir -p $(dir $@)
+	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include \
+		tests/kernel/pulse_scheduler_bootstrap.c $(PULSE_DIR)/schedule/round-robin.c -o $@
 
 $(PRELUDE_OBJ): $(PRELUDE_DIR)/main.c $(PRELUDE_DIR)/include/uefi.h src/platform/dawn/include/dawn.h
 	@mkdir -p $(dir $@)
@@ -119,10 +130,11 @@ $(ESP_IMAGE): $(PRELUDE_EFI)
 check-uefi: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE)
 
-test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TEST)
+test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TEST) $(PULSE_SCHEDULER_TEST)
 	$(PULSE_MEMORY_TEST)
 	$(PULSE_PAGING_TEST)
 	$(PULSE_INTERRUPTS_TEST)
+	$(PULSE_SCHEDULER_TEST)
 	tests/boot/check-prelude-artifact.sh $(ESP_IMAGE) $(PRELUDE_EFI) $(PULSE_ELF)
 
 clean:

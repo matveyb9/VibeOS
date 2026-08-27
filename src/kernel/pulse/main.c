@@ -9,6 +9,7 @@
 #include "memory.h"
 #include "paging.h"
 #include "interrupts.h"
+#include "scheduler.h"
 
 static void pulse_debug_putc(char character) {
     __asm__ volatile("outb %0, %w1" : : "a"(character), "d"((uint16_t)0x402));
@@ -36,11 +37,22 @@ static int pulse_context_is_valid(const DAWN_CONTEXT *context) {
 __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
     uint64_t first_frame;
     uint64_t second_frame;
+    uint32_t first_task;
+    uint32_t second_task;
+    uint32_t selected_task;
 
     if (pulse_context_is_valid(context) && pulse_memory_initialize(context) &&
         pulse_memory_take_frame(&first_frame) && pulse_memory_take_frame(&second_frame) &&
         second_frame == first_frame + 4096U && pulse_paging_initialize() &&
         pulse_interrupts_initialize()) {
+        pulse_scheduler_initialize();
+        if (!pulse_scheduler_create_ready_task(&first_task) ||
+            !pulse_scheduler_create_ready_task(&second_task) ||
+            !pulse_scheduler_select_next(&selected_task) || selected_task != first_task ||
+            !pulse_scheduler_select_next(&selected_task) || selected_task != second_task) {
+            pulse_debug_write("PULSE: early scheduler bootstrap failed\n");
+            pulse_debug_exit();
+        }
         pulse_interrupts_trigger_breakpoint();
         pulse_debug_write("PULSE: breakpoint dispatch unexpectedly returned\n");
     } else {
