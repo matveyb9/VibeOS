@@ -31,6 +31,7 @@ PULSE_ORIGIN_ABI_OBJ := $(BUILD_DIR)/runtime/origin/abi.obj
 PULSE_ATLAS_RAM_OBJ := $(BUILD_DIR)/drivers/atlas/ram-block.obj
 PULSE_ATLAS_KEYBOARD_OBJ := $(BUILD_DIR)/drivers/atlas/i8042-keyboard.obj
 PULSE_ATLAS_KEYBOARD_IRQ_OBJ := $(BUILD_DIR)/drivers/atlas/i8042-keyboard-irq.obj
+PULSE_ATLAS_PCI_OBJ := $(BUILD_DIR)/drivers/atlas/pci-inventory.obj
 PULSE_VAULT_OBJ := $(BUILD_DIR)/storage/vault/vaultfs.obj
 PULSE_SESSION_OBJ := $(BUILD_DIR)/services/session/boot-mode.obj
 PULSE_PARCEL_OBJ := $(BUILD_DIR)/services/parcel/parcel.obj
@@ -54,6 +55,7 @@ PULSE_PARCEL_TEST := $(BUILD_DIR)/tests/pulse-parcel-bootstrap
 PULSE_CANVAS_TEST := $(BUILD_DIR)/tests/pulse-canvas-bootstrap
 PULSE_HORIZON_TEST := $(BUILD_DIR)/tests/pulse-horizon-bootstrap
 PULSE_KEYBOARD_TEST := $(BUILD_DIR)/tests/pulse-keyboard-bootstrap
+PULSE_PCI_TEST := $(BUILD_DIR)/tests/pulse-pci-bootstrap
 ESP_IMAGE := $(BUILD_DIR)/vibeos-uefi-esp.img
 BIOS_STAGE1_BIN := $(BUILD_DIR)/prelude/bios/stage1.bin
 BIOS_STAGE2_BIN := $(BUILD_DIR)/prelude/bios/stage2.bin
@@ -169,6 +171,10 @@ $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ): src/drivers/atlas/i8042-keyboard-irq.c src/driv
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
+$(PULSE_ATLAS_PCI_OBJ): src/drivers/atlas/pci-inventory.c src/drivers/atlas/include/atlas_pci.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
 $(PULSE_VAULT_OBJ): src/storage/vault/vaultfs.c src/storage/vault/include/vaultfs.h src/drivers/atlas/include/atlas_block.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
@@ -201,10 +207,10 @@ $(PULSE_PANIC_OBJ): $(PULSE_DIR)/debug/panic.c $(PULSE_DIR)/include/panic.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
-$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
+$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_ATLAS_PCI_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
 	@mkdir -p $(dir $@)
 	$(LLD_LD) -m elf_x86_64 -nostdlib --build-id=none -T $(PULSE_DIR)/linker/x86_64.ld \
-		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_PANIC_OBJ)
+		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_ATLAS_PCI_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_PANIC_OBJ)
 
 $(PULSE_BIN): $(PULSE_ELF)
 	$(LLVM_OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $< $@
@@ -274,6 +280,11 @@ $(PULSE_KEYBOARD_TEST): tests/kernel/pulse_keyboard_bootstrap.c src/drivers/atla
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/drivers/atlas/include \
 		tests/kernel/pulse_keyboard_bootstrap.c src/drivers/atlas/i8042-keyboard.c -o $@
 
+$(PULSE_PCI_TEST): tests/kernel/pulse_pci_bootstrap.c src/drivers/atlas/pci-inventory.c
+	@mkdir -p $(dir $@)
+	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/drivers/atlas/include \
+		tests/kernel/pulse_pci_bootstrap.c src/drivers/atlas/pci-inventory.c -o $@
+
 $(PRELUDE_OBJ): $(PRELUDE_DIR)/main.c $(PRELUDE_DIR)/include/uefi.h src/platform/dawn/include/dawn.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PRELUDE_CFLAGS) -c $< -o $@
@@ -315,7 +326,7 @@ $(BIOS_IMAGE): $(BIOS_STAGE1_BIN) $(BIOS_STAGE2_BIN) $(PULSE_BIN)
 	dd if=$(PULSE_BIN) of=$@ bs=512 seek=$$((1 + $(PRELUDE_BIOS_STAGE2_SECTORS))) conv=notrunc
 
 check-uefi: $(ESP_IMAGE)
-	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "ATLAS: keyboard event queue verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
+	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "ATLAS: keyboard event queue verified" "ATLAS: PCI inventory verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
 
 check-keyboard:
 	$(MAKE) BUILD_DIR=build-keyboard PULSE_PROBE=keyboard uefi-image
@@ -327,7 +338,7 @@ check-bios: $(BIOS_IMAGE)
 check-panic: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE) "PULSE PANIC: unhandled interrupt"
 
-test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TEST) $(PULSE_SCHEDULER_TEST) $(PULSE_CONTEXT_TEST) $(PULSE_TIMER_TEST) $(PULSE_RELAY_TEST) $(PULSE_VAULT_TEST) $(PULSE_SESSION_TEST) $(PULSE_PARCEL_TEST) $(PULSE_CANVAS_TEST) $(PULSE_HORIZON_TEST) $(PULSE_KEYBOARD_TEST)
+test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TEST) $(PULSE_SCHEDULER_TEST) $(PULSE_CONTEXT_TEST) $(PULSE_TIMER_TEST) $(PULSE_RELAY_TEST) $(PULSE_VAULT_TEST) $(PULSE_SESSION_TEST) $(PULSE_PARCEL_TEST) $(PULSE_CANVAS_TEST) $(PULSE_HORIZON_TEST) $(PULSE_KEYBOARD_TEST) $(PULSE_PCI_TEST)
 	$(PULSE_MEMORY_TEST)
 	$(PULSE_PAGING_TEST)
 	$(PULSE_INTERRUPTS_TEST)
@@ -341,6 +352,7 @@ test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TE
 	$(PULSE_CANVAS_TEST)
 	$(PULSE_HORIZON_TEST)
 	$(PULSE_KEYBOARD_TEST)
+	$(PULSE_PCI_TEST)
 	$(MAKE) check-keyboard
 	$(MAKE) check-bios
 	$(MAKE) BUILD_DIR=build-panic PULSE_PROBE=panic check-panic
