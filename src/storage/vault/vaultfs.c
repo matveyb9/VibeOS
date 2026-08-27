@@ -369,6 +369,23 @@ int vaultfs_journal_load(
     return vaultfs_journal_valid(entry);
 }
 
+int vaultfs_recovery_decide(
+    const VAULTFS_SUPERBLOCK *superblock,
+    const VAULTFS_JOURNAL_ENTRY *journal,
+    const VAULTFS_ROOT_DIRECTORY_BLOCK *root_block,
+    VAULTFS_RECOVERY_DECISION *decision) {
+    if (decision == (void *)0 || !vaultfs_superblock_valid(superblock) || !vaultfs_journal_valid(journal) ||
+        !vaultfs_root_directory_block_valid(root_block) || root_block->generation != superblock->generation ||
+        (journal->target_block != superblock->root_directory_block &&
+         journal->target_block != superblock->backup_root_directory_block) ||
+        journal->payload_checksum != root_block->checksum) {
+        return 0;
+    }
+    *decision = journal->state == VAULTFS_JOURNAL_PREPARED ? VAULTFS_RECOVERY_DISCARD_PREPARED
+                                                            : VAULTFS_RECOVERY_ACCEPT_COMMITTED;
+    return 1;
+}
+
 int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot) {
     if (!vaultfs_superblock_valid(superblock) || !vaultfs_system_slot_valid(target_slot) ||
         target_slot == superblock->active_system_slot) {

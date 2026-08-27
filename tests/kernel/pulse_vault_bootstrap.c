@@ -22,6 +22,7 @@ int main(void) {
     VAULTFS_SUPERBLOCK selected;
     VAULTFS_JOURNAL_ENTRY journal_entry;
     VAULTFS_JOURNAL_ENTRY loaded_journal_entry;
+    VAULTFS_RECOVERY_DECISION recovery_decision;
     VAULTFS_DIRECTORY directory;
     VAULTFS_ROOT_DIRECTORY_BLOCK root_block;
     VAULTFS_ROOT_DIRECTORY_BLOCK loaded_root_block;
@@ -100,11 +101,18 @@ int main(void) {
         return 1;
     }
 
-    vaultfs_journal_prepare(&journal_entry, UINT64_C(9), UINT64_C(2), UINT32_C(0x10203040));
+    vaultfs_superblock_initialize(&selected, UINT64_C(8), 1U, UINT64_C(2), UINT64_C(3), UINT64_C(80));
+    vaultfs_journal_prepare(&journal_entry, UINT64_C(9), UINT64_C(2), root_block.checksum);
     if (!expect(vaultfs_journal_valid(&journal_entry), "prepared journal entry validates") ||
+        !expect(vaultfs_recovery_decide(&selected, &journal_entry, &root_block, &recovery_decision) &&
+                    recovery_decision == VAULTFS_RECOVERY_DISCARD_PREPARED,
+                    "prepared matching journal decision discards incomplete operation") ||
         !expect(vaultfs_journal_commit(&journal_entry), "prepared entry commits") ||
         !expect(journal_entry.state == VAULTFS_JOURNAL_COMMITTED && vaultfs_journal_valid(&journal_entry),
                     "committed entry is resealed") ||
+        !expect(vaultfs_recovery_decide(&selected, &journal_entry, &root_block, &recovery_decision) &&
+                    recovery_decision == VAULTFS_RECOVERY_ACCEPT_COMMITTED,
+                    "committed matching journal decision accepts completed operation") ||
         !expect(vaultfs_journal_store(&device, UINT64_C(4), &journal_entry) &&
                     vaultfs_journal_load(&device, UINT64_C(4), &loaded_journal_entry) &&
                     loaded_journal_entry.transaction_id == UINT64_C(9) &&

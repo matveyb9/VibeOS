@@ -28,6 +28,11 @@ typedef enum {
     VAULTFS_ENTRY_DIRECTORY = 2
 } VAULTFS_ENTRY_KIND;
 
+typedef enum {
+    VAULTFS_RECOVERY_DISCARD_PREPARED = 1,
+    VAULTFS_RECOVERY_ACCEPT_COMMITTED = 2
+} VAULTFS_RECOVERY_DECISION;
+
 typedef struct {
     uint64_t magic;
     uint32_t format_version;
@@ -102,6 +107,11 @@ int vaultfs_journal_store(
     ATLAS_RAM_BLOCK_DEVICE *device, uint64_t block_index, const VAULTFS_JOURNAL_ENTRY *entry);
 int vaultfs_journal_load(
     const ATLAS_RAM_BLOCK_DEVICE *device, uint64_t block_index, VAULTFS_JOURNAL_ENTRY *entry);
+int vaultfs_recovery_decide(
+    const VAULTFS_SUPERBLOCK *superblock,
+    const VAULTFS_JOURNAL_ENTRY *journal,
+    const VAULTFS_ROOT_DIRECTORY_BLOCK *root_block,
+    VAULTFS_RECOVERY_DECISION *decision);
 int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot);
 int vaultfs_system_slot_confirm(VAULTFS_SUPERBLOCK *superblock);
 int vaultfs_system_slot_recover(const VAULTFS_SUPERBLOCK *superblock, uint64_t *boot_slot);
