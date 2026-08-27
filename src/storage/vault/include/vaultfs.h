@@ -6,9 +6,10 @@
 #include <atlas_block.h>
 
 #define VAULTFS_SUPERBLOCK_MAGIC UINT64_C(0x5641554c54465331)
-#define VAULTFS_FORMAT_VERSION UINT32_C(1)
+#define VAULTFS_FORMAT_VERSION UINT32_C(2)
 #define VAULTFS_JOURNAL_MAGIC UINT64_C(0x5641554c544a4e31)
 #define VAULTFS_SYSTEM_SLOT_NONE UINT64_MAX
+#define VAULTFS_ROOT_DIRECTORY_BLOCK_NONE UINT64_MAX
 #define VAULTFS_DIRECTORY_CAPACITY UINT32_C(16)
 #define VAULTFS_ENTRY_NAME_BYTES UINT32_C(32)
 
@@ -29,6 +30,7 @@ typedef struct __attribute__((packed)) {
     uint64_t generation;
     uint64_t active_system_slot;
     uint64_t pending_system_slot;
+    uint64_t root_directory_block;
     uint64_t journal_sequence;
     uint32_t checksum;
 } VAULTFS_SUPERBLOCK;
@@ -61,6 +63,7 @@ void vaultfs_superblock_initialize(
     VAULTFS_SUPERBLOCK *superblock,
     uint64_t generation,
     uint64_t active_system_slot,
+    uint64_t root_directory_block,
     uint64_t journal_sequence);
 int vaultfs_superblock_valid(const VAULTFS_SUPERBLOCK *superblock);
 int vaultfs_superblock_store(

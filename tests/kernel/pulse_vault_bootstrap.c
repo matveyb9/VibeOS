@@ -49,13 +49,14 @@ int main(void) {
         return 1;
     }
 
-    vaultfs_superblock_initialize(&primary, UINT64_C(7), 0U, UINT64_C(70));
-    vaultfs_superblock_initialize(&backup, UINT64_C(8), 1U, UINT64_C(80));
-    if (!expect(vaultfs_superblock_valid(&primary), "primary checksum validates") ||
+    vaultfs_superblock_initialize(&primary, UINT64_C(7), 0U, UINT64_C(2), UINT64_C(70));
+    vaultfs_superblock_initialize(&backup, UINT64_C(8), 1U, UINT64_C(2), UINT64_C(80));
+    if (!expect(vaultfs_superblock_valid(&primary) && primary.root_directory_block == UINT64_C(2),
+                    "primary stores sealed root-directory block metadata") ||
         !expect(vaultfs_superblock_store(&device, 0U, &primary), "primary stores") ||
         !expect(vaultfs_superblock_store(&device, 1U, &backup), "backup stores") ||
         !expect(vaultfs_superblock_load_latest(&device, 0U, 1U, &selected) &&
-                    selected.generation == UINT64_C(8),
+                    selected.generation == UINT64_C(8) && selected.root_directory_block == UINT64_C(2),
                     "newer valid superblock is selected")) {
         return 1;
     }
@@ -90,6 +91,11 @@ int main(void) {
         !expect(vaultfs_system_slot_recover(&primary, &boot_slot) && boot_slot == 1U,
                     "confirmed slot becomes active") ||
         !expect(!vaultfs_system_slot_stage(&primary, 1U), "active slot cannot stage to itself")) {
+        return 1;
+    }
+
+    primary.root_directory_block = VAULTFS_ROOT_DIRECTORY_BLOCK_NONE;
+    if (!expect(!vaultfs_superblock_valid(&primary), "missing root-directory block is rejected")) {
         return 1;
     }
 
