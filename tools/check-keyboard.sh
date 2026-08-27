@@ -61,7 +61,7 @@ if [[ ! -S "$monitor_socket" ]] || ! grep -Fqx "ATLAS: keyboard irq probe ready"
     [[ -f "$debug_log" ]] && cat "$debug_log" >&2
     exit 1
 fi
-printf 'sendkey right\n' | socat - UNIX-CONNECT:"$monitor_socket" >/dev/null
+printf 'sendkey ret\n' | socat - UNIX-CONNECT:"$monitor_socket" >/dev/null
 
 set +e
 wait "$qemu_pid"
