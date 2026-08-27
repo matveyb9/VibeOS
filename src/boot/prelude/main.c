@@ -11,6 +11,7 @@
 
 #define PRELUDE_PULSE_LOAD_ADDRESS UINT64_C(0x00200000)
 #define PRELUDE_PAGE_SIZE ((UINTN)4096)
+#define PRELUDE_PULSE_STACK_PAGES ((UINTN)32)
 
 typedef void(__attribute__((sysv_abi)) *PRELUDE_PULSE_ENTRY)(const DAWN_CONTEXT *context);
 
@@ -99,6 +100,21 @@ static EFI_STATUS prelude_load_pulse(
     return EFI_SUCCESS;
 }
 
+static EFI_STATUS prelude_prepare_pulse_stack(EFI_SYSTEM_TABLE *system_table) {
+    EFI_STATUS status;
+    EFI_PHYSICAL_ADDRESS stack_base = 0;
+
+    status = system_table->boot_services->allocate_pages(
+        EFI_ALLOCATE_ANY_PAGES, EFI_LOADER_DATA, PRELUDE_PULSE_STACK_PAGES, &stack_base);
+    if (status != EFI_SUCCESS) {
+        return status;
+    }
+
+    dawn_context.kernel_stack_top = stack_base + (PRELUDE_PULSE_STACK_PAGES * PRELUDE_PAGE_SIZE);
+    dawn_context.kernel_stack_size = PRELUDE_PULSE_STACK_PAGES * PRELUDE_PAGE_SIZE;
+    return EFI_SUCCESS;
+}
+
 static EFI_STATUS prelude_seal_dawn_context(
     EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table) {
     EFI_STATUS status = EFI_SUCCESS;
@@ -137,6 +153,11 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
     }
 
     status = prelude_load_pulse(system_table, &pulse_entry_address);
+    if (status != EFI_SUCCESS) {
+        return status;
+    }
+
+    status = prelude_prepare_pulse_stack(system_table);
     if (status != EFI_SUCCESS) {
         return status;
     }

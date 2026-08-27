@@ -12,6 +12,11 @@ SECTIONS
         *(.text .text.*)
     }
 
+    .text.memory : ALIGN(4096)
+    {
+        *(.text.memory .text.memory.*)
+    }
+
     .rodata : ALIGN(4096)
     {
         *(.rodata .rodata.*)

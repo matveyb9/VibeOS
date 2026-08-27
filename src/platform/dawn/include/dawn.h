@@ -23,6 +23,8 @@ typedef struct {
     uint64_t memory_descriptor_size;
     uint32_t memory_descriptor_version;
     uint32_t reserved;
+    uint64_t kernel_stack_top;
+    uint64_t kernel_stack_size;
 } DAWN_CONTEXT;
 
 #endif

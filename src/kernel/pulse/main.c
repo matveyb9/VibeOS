@@ -6,7 +6,7 @@
  * responsibilities; this step proves the native Prelude-to-Pulse boundary.
  */
 
-#include <dawn.h>
+#include "memory.h"
 
 static void pulse_debug_putc(char character) {
     __asm__ volatile("outb %0, %w1" : : "a"(character), "d"((uint16_t)0x402));
@@ -27,14 +27,20 @@ static int pulse_context_is_valid(const DAWN_CONTEXT *context) {
     return context != (void *)0 && context->magic == DAWN_CONTEXT_MAGIC &&
            context->version == DAWN_CONTEXT_VERSION && context->size >= sizeof(DAWN_CONTEXT) &&
            context->memory_map_physical_address != 0 && context->memory_map_size != 0 &&
-           context->memory_descriptor_size >= 40U;
+           context->memory_descriptor_size >= 40U && context->kernel_stack_top != 0 &&
+           context->kernel_stack_size >= 4096U;
 }
 
 __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
-    if (pulse_context_is_valid(context)) {
-        pulse_debug_write("PULSE: Dawn Context v1 accepted\n");
+    uint64_t first_frame;
+    uint64_t second_frame;
+
+    if (pulse_context_is_valid(context) && pulse_memory_initialize(context) &&
+        pulse_memory_take_frame(&first_frame) && pulse_memory_take_frame(&second_frame) &&
+        second_frame == first_frame + 4096U) {
+        pulse_debug_write("PULSE: early memory bootstrap ready\n");
     } else {
-        pulse_debug_write("PULSE: Dawn Context rejected\n");
+        pulse_debug_write("PULSE: early memory bootstrap failed\n");
     }
 
     pulse_debug_exit();

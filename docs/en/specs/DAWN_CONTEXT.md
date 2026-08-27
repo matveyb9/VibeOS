@@ -23,6 +23,8 @@ UEFI Boot Services remain available only before a successful `ExitBootServices()
 | `memory_descriptor_size` | `UINTN` | Stride between descriptors. |
 | `memory_descriptor_version` | `UINT32` | UEFI descriptor version. |
 | `reserved` | `UINT32` | Zero in v1. |
+| `kernel_stack_top` | `uint64_t` | Initial stack-top physical address for Pulse. |
+| `kernel_stack_size` | `uint64_t` | Initial stack allocation size in bytes. |
 
 ## Producer rules
 
@@ -32,7 +34,7 @@ The structure is **append-only**. A future Pulse build must reject an unknown `m
 
 ## Current handoff boundary
 
-This milestone seals the context, loads the first native Pulse image at physical address `0x00200000`, and proves the direct transition in QEMU. Pulse currently validates only the contract's version and memory-map metadata; physical memory allocation, paging, interrupts, and task scheduling remain later Pulse milestones.
+This milestone seals the context, loads the first native Pulse image at physical address `0x00200000`, and proves the direct transition in QEMU. Prelude allocates a separate 128 KiB stack for Pulse. Pulse validates the contract, selects an EFI conventional-memory region and allocates two 4 KiB bootstrap frames; paging, interrupts, and task scheduling remain later Pulse milestones.
 
 ## References
 

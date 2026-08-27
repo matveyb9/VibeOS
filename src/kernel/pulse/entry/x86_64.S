@@ -4,4 +4,9 @@
 	.type _pulse_entry,@function
 _pulse_entry:
 	cli
+	movq %rdi, %r12
+	movq 56(%r12), %rsp
+	andq $-16, %rsp
+	subq $8, %rsp
+	movq %r12, %rdi
 	jmp pulse_entry

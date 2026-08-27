@@ -23,6 +23,8 @@ UEFI Boot Services доступны только до успешного выз�
 | `memory_descriptor_size` | `UINTN` | Шаг между дескрипторами. |
 | `memory_descriptor_version` | `UINT32` | Версия UEFI-дескрипторов. |
 | `reserved` | `UINT32` | В v1 содержит ноль. |
+| `kernel_stack_top` | `uint64_t` | Физический адрес вершины начального стека Pulse. |
+| `kernel_stack_size` | `uint64_t` | Размер начального стека в байтах. |
 
 ## Правила producer
 
@@ -32,7 +34,7 @@ UEFI Boot Services доступны только до успешного выз�
 
 ## Текущая граница handoff
 
-Этот этап запечатывает контекст, загружает первый нативный образ Pulse по физическому адресу `0x00200000` и подтверждает прямой переход в QEMU. Сейчас Pulse проверяет только версию контракта и метаданные memory map; physical memory allocation, paging, interrupts и task scheduling остаются следующими этапами Pulse.
+Этот этап запечатывает контекст, загружает первый нативный образ Pulse по физическому адресу `0x00200000` и подтверждает прямой переход в QEMU. Prelude выделяет отдельный стек Pulse размером 128 КиБ. Pulse проверяет контракт, выбирает EFI conventional-memory region и выделяет два bootstrap frame по 4 КиБ; paging, interrupts и task scheduling остаются следующими этапами Pulse.
 
 ## Источники
 
