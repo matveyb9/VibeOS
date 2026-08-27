@@ -18,4 +18,6 @@
 | Relay Link | Привязан к object и immutable transfer ceiling, пока активен |
 | Revocation | Немедленно отключает указанный Key record |
 
-QEMU startup probe создаёт Key с `READ`/`WRITE`/`INSPECT` для object `1`, создаёт Relay Link с ограничением `READ`, передаёт read-only child Key, проверяет его и отклоняет попытку передачи `WRITE`. Модель намеренно локальна для раннего kernel. Process-scoped key space, lifecycle inheritance, atomic concurrency, object destruction и user-mode transport появятся, когда Pulse и Origin получат process isolation.
+Relay также предлагает bounded in-kernel channel из восьми FIFO slot. При отправке сообщения Link channel создаёт Key получателя, поэтому queue несёт word вместе с ограниченной capability, а не скопированный authority record. QEMU startup probe создаёт Key с `READ`/`WRITE`/`INSPECT` для object `1`, создаёт Relay Link с ограничением `READ`, передаёт read-only child Key, проверяет его, отклоняет попытку передачи `WRITE`, а затем отправляет и получает read-only Key через channel.
+
+Модель намеренно локальна для раннего kernel. Process-scoped key space, lifecycle inheritance, atomic concurrency, object destruction, blocking wait и user-mode transport появятся, когда Pulse и Origin получат process isolation.

@@ -23,6 +23,7 @@ PULSE_CONTEXT_OBJ := $(BUILD_DIR)/pulse/schedule/context.obj
 PULSE_TIMER_OBJ := $(BUILD_DIR)/pulse/time/pit-x86_64.obj
 PULSE_KEYS_OBJ := $(BUILD_DIR)/security/keys/key-space.obj
 PULSE_RELAY_OBJ := $(BUILD_DIR)/ipc/relay/link.obj
+PULSE_RELAY_CHANNEL_OBJ := $(BUILD_DIR)/ipc/relay/channel.obj
 PULSE_ORIGIN_OBJ := $(BUILD_DIR)/runtime/origin/origin.obj
 PULSE_PANIC_OBJ := $(BUILD_DIR)/pulse/debug/panic.obj
 PULSE_ELF := $(BUILD_DIR)/pulse/PULSE.ELF
@@ -110,6 +111,10 @@ $(PULSE_RELAY_OBJ): src/ipc/relay/link.c src/ipc/relay/include/relay.h src/secur
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
+$(PULSE_RELAY_CHANNEL_OBJ): src/ipc/relay/channel.c src/ipc/relay/include/relay.h src/security/keys/include/keys.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
 $(PULSE_ORIGIN_OBJ): src/runtime/origin/origin.c src/runtime/origin/include/origin.h src/ipc/relay/include/relay.h src/security/keys/include/keys.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
@@ -118,10 +123,10 @@ $(PULSE_PANIC_OBJ): $(PULSE_DIR)/debug/panic.c $(PULSE_DIR)/include/panic.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
-$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
+$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
 	@mkdir -p $(dir $@)
 	$(LLD_LD) -m elf_x86_64 -nostdlib --build-id=none -T $(PULSE_DIR)/linker/x86_64.ld \
-		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_PANIC_OBJ)
+		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_PANIC_OBJ)
 
 $(PULSE_BIN): $(PULSE_ELF)
 	$(LLVM_OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $< $@
@@ -156,10 +161,10 @@ $(PULSE_TIMER_TEST): tests/kernel/pulse_timer_bootstrap.c $(PULSE_DIR)/time/pit-
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include \
 		tests/kernel/pulse_timer_bootstrap.c $(PULSE_DIR)/time/pit-x86_64.c -o $@
 
-$(PULSE_RELAY_TEST): tests/kernel/pulse_relay_bootstrap.c src/security/keys/key-space.c src/ipc/relay/link.c src/runtime/origin/origin.c
+$(PULSE_RELAY_TEST): tests/kernel/pulse_relay_bootstrap.c src/security/keys/key-space.c src/ipc/relay/link.c src/ipc/relay/channel.c src/runtime/origin/origin.c
 	@mkdir -p $(dir $@)
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/security/keys/include -Isrc/ipc/relay/include -Isrc/runtime/origin/include \
-		tests/kernel/pulse_relay_bootstrap.c src/security/keys/key-space.c src/ipc/relay/link.c src/runtime/origin/origin.c -o $@
+		tests/kernel/pulse_relay_bootstrap.c src/security/keys/key-space.c src/ipc/relay/link.c src/ipc/relay/channel.c src/runtime/origin/origin.c -o $@
 
 $(PRELUDE_OBJ): $(PRELUDE_DIR)/main.c $(PRELUDE_DIR)/include/uefi.h src/platform/dawn/include/dawn.h
 	@mkdir -p $(dir $@)

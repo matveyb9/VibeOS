@@ -18,4 +18,6 @@ The first authority model in VibeOS uses **opaque Key tokens** rather than ambie
 | Relay Link | Object-bound with an immutable transfer ceiling while active |
 | Revocation | Disables the specified Key record immediately |
 
-The QEMU startup probe mints a read/write/inspect Key for object `1`, creates a Relay Link capped at `READ`, transfers a read-only child Key, verifies it, and rejects an attempted `WRITE` transfer. The model is intentionally local to the early kernel. Process-scoped key spaces, lifecycle inheritance, atomic concurrency, object destruction, and user-mode transport will be added as Pulse and Origin acquire process isolation.
+Relay now also offers a bounded in-kernel channel with eight FIFO slots. Sending a message asks the channel's Link to mint the recipient Key, so the queue carries a word together with a constrained capability rather than a copied authority record. The QEMU startup probe mints a read/write/inspect Key for object `1`, creates a Relay Link capped at `READ`, transfers a read-only child Key, verifies it, rejects an attempted `WRITE` transfer, then sends and receives a read-only Key through the channel.
+
+The model is intentionally local to the early kernel. Process-scoped key spaces, lifecycle inheritance, atomic concurrency, object destruction, blocking waits, and user-mode transport will be added as Pulse and Origin acquire process isolation.

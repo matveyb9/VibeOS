@@ -22,6 +22,8 @@ int main(void) {
     VIBE_OBJECT_ID object_id;
     VIBE_RIGHTS rights;
     RELAY_LINK link;
+    RELAY_CHANNEL channel;
+    RELAY_MESSAGE message;
 
     origin_keys_reset();
     if (!expect(origin_key_mint(UINT64_C(42), VIBE_RIGHT_READ | VIBE_RIGHT_WRITE, &authority),
@@ -41,6 +43,16 @@ int main(void) {
         !expect(origin_key_revoke(authority), "authority key is revoked") ||
         !expect(!relay_link_transfer(&link, authority, VIBE_RIGHT_READ, &read_key),
                     "revoked key cannot be transferred") ||
+        !expect(origin_key_mint(UINT64_C(42), VIBE_RIGHT_READ | VIBE_RIGHT_WRITE, &authority),
+                    "replacement authority key is minted") ||
+        !expect(relay_channel_open(&channel, authority, VIBE_RIGHT_READ), "relay channel opens") ||
+        !expect(relay_channel_send(&channel, authority, VIBE_RIGHT_READ, UINT64_C(0x55)),
+                    "channel sends a narrowed key") ||
+        !expect(relay_channel_receive(&channel, &message) && message.word == UINT64_C(0x55),
+                    "channel preserves message ordering") ||
+        !expect(origin_key_inspect(message.key, &object_id, &rights) && rights == VIBE_RIGHT_READ,
+                    "received key remains narrowed") ||
+        !expect(!relay_channel_receive(&channel, &message), "empty channel rejects receive") ||
         !expect(origin_runtime_probe(), "Origin runtime probe succeeds")) {
         return 1;
     }
