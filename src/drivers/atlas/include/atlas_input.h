@@ -13,11 +13,14 @@ typedef enum {
     ATLAS_KEY_ENTER = 2
 } ATLAS_KEY;
 
+#define ATLAS_KEY_MODIFIER_SHIFT UINT8_C(0x01)
+
 typedef struct {
     uint8_t scancode;
     uint8_t pressed;
     char ascii;
     uint8_t key;
+    uint8_t modifiers;
 } ATLAS_KEY_EVENT;
 
 void atlas_keyboard_initialize(void);

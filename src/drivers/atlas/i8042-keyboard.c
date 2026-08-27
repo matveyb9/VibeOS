@@ -12,6 +12,7 @@ typedef struct {
     uint32_t read_index;
     uint32_t write_index;
     uint32_t event_count;
+    uint8_t modifiers;
 } ATLAS_KEYBOARD_QUEUE;
 
 static ATLAS_KEYBOARD_QUEUE early_keyboard_queue;
@@ -59,6 +60,10 @@ static ATLAS_KEY atlas_keyboard_key_from_set_1(uint8_t make_code) {
     return ATLAS_KEY_NONE;
 }
 
+static int atlas_keyboard_is_shift_set_1(uint8_t make_code) {
+    return make_code == UINT8_C(0x2a) || make_code == UINT8_C(0x36);
+}
+
 void atlas_keyboard_initialize(void) {
     uint32_t index;
 
@@ -71,6 +76,7 @@ void atlas_keyboard_initialize(void) {
     early_keyboard_queue.read_index = 0U;
     early_keyboard_queue.write_index = 0U;
     early_keyboard_queue.event_count = 0U;
+    early_keyboard_queue.modifiers = 0U;
 }
 
 int atlas_keyboard_receive_scancode(uint8_t scancode) {
@@ -85,8 +91,16 @@ int atlas_keyboard_receive_scancode(uint8_t scancode) {
     make_code = scancode & UINT8_C(0x7f);
     event->scancode = make_code;
     event->pressed = (scancode & UINT8_C(0x80)) == 0U ? 1U : 0U;
+    if (atlas_keyboard_is_shift_set_1(make_code)) {
+        if (event->pressed != 0U) {
+            early_keyboard_queue.modifiers |= ATLAS_KEY_MODIFIER_SHIFT;
+        } else {
+            early_keyboard_queue.modifiers &= (uint8_t)~ATLAS_KEY_MODIFIER_SHIFT;
+        }
+    }
     event->ascii = atlas_keyboard_decode_set_1(make_code);
     event->key = atlas_keyboard_key_from_set_1(make_code);
+    event->modifiers = early_keyboard_queue.modifiers;
     early_keyboard_queue.write_index =
         (early_keyboard_queue.write_index + 1U) % ATLAS_KEYBOARD_QUEUE_CAPACITY;
     ++early_keyboard_queue.event_count;

@@ -38,6 +38,20 @@ int main(void) {
         !expect(atlas_keyboard_pending_event_count() == 0U, "queue drains")) {
         return 1;
     }
+    atlas_keyboard_initialize();
+    if (!expect(atlas_keyboard_receive_scancode(UINT8_C(0x2a)), "Shift press is queued") ||
+        !expect(atlas_keyboard_receive_scancode(UINT8_C(0x0f)), "Shift+Tab is queued") ||
+        !expect(atlas_keyboard_receive_scancode(UINT8_C(0xaa)), "Shift release is queued") ||
+        !expect(atlas_keyboard_next_event(&event) && event.modifiers == ATLAS_KEY_MODIFIER_SHIFT,
+                "Shift press sets the following modifier state") ||
+        !expect(atlas_keyboard_next_event(&event) && event.key == ATLAS_KEY_TAB &&
+                    event.modifiers == ATLAS_KEY_MODIFIER_SHIFT,
+                "Tab retains active Shift modifier") ||
+        !expect(atlas_keyboard_next_event(&event) && event.modifiers == ATLAS_KEY_NONE,
+                "Shift release clears modifier state") ||
+        !expect(atlas_keyboard_pending_event_count() == 0U, "modifier queue drains")) {
+        return 1;
+    }
     for (index = 0; index < ATLAS_KEYBOARD_QUEUE_CAPACITY; ++index) {
         if (!expect(atlas_keyboard_receive_scancode(UINT8_C(0x1e)), "queue accepts bounded event")) {
             return 1;

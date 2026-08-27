@@ -17,7 +17,8 @@ int horizon_input_apply_event(
         return 1;
     }
     if (event->key == ATLAS_KEY_TAB) {
-        action = HORIZON_DESKTOP_ACTION_FOCUS_NEXT;
+        action = (event->modifiers & ATLAS_KEY_MODIFIER_SHIFT) != 0U ?
+                     HORIZON_DESKTOP_ACTION_FOCUS_PREVIOUS : HORIZON_DESKTOP_ACTION_FOCUS_NEXT;
     } else if (event->key == ATLAS_KEY_ENTER) {
         action = HORIZON_DESKTOP_ACTION_SELECT_FOCUSED;
     } else {
@@ -63,7 +64,7 @@ int horizon_input_runtime_probe(void) {
     HORIZON_DESKTOP_STATE state;
     HORIZON_INPUT_PUMP_RESULT result;
     uint32_t handled;
-    ATLAS_KEY_EVENT event = {UINT8_C(0x0f), 1U, '\0', ATLAS_KEY_TAB};
+    ATLAS_KEY_EVENT event = {UINT8_C(0x0f), 1U, '\0', ATLAS_KEY_TAB, ATLAS_KEY_NONE};
 
     atlas_keyboard_initialize();
     if (!atlas_keyboard_receive_scancode(UINT8_C(0x0f)) ||
@@ -74,9 +75,9 @@ int horizon_input_runtime_probe(void) {
     }
     return horizon_desktop_state_initialize(&state, 3U) &&
            horizon_input_apply_event(&state, &event, &handled) && handled == 1U && state.focused_window == 1U &&
-           horizon_input_apply_event(&state, &(ATLAS_KEY_EVENT){UINT8_C(0x0f), 0U, '\0', ATLAS_KEY_TAB}, &handled) &&
+           horizon_input_apply_event(&state, &(ATLAS_KEY_EVENT){UINT8_C(0x0f), 0U, '\0', ATLAS_KEY_TAB, ATLAS_KEY_NONE}, &handled) &&
            handled == 0U && state.focused_window == 1U &&
-           horizon_input_apply_event(&state, &(ATLAS_KEY_EVENT){UINT8_C(0x1c), 1U, '\0', ATLAS_KEY_ENTER}, &handled) &&
+           horizon_input_apply_event(&state, &(ATLAS_KEY_EVENT){UINT8_C(0x1c), 1U, '\0', ATLAS_KEY_ENTER, ATLAS_KEY_NONE}, &handled) &&
            handled == 1U && state.selected_window == 1U && horizon_desktop_state_initialize(&state, 3U) &&
            horizon_input_pump(&state, 4U, &result) && result.dequeued_event_count == 4U &&
            result.handled_event_count == 3U && result.redraw_requested == 1U && state.focused_window == 2U &&
