@@ -11,7 +11,7 @@ Atlas now defines the independent block-device boundary consumed by storage code
 | Component | Initial behavior |
 |---|---|
 | Atlas backend | Bounded RAM block device with 4 KiB blocks |
-| VaultFS metadata | Format `2` primary and backup superblocks |
+| VaultFS metadata | Format `3` primary and backup superblocks with distinct dual-root references |
 | Integrity | CRC32 over sealed metadata fields |
 | Selection | Highest valid generation, primary on a tie |
 | System slot | Encoded as `active_system_slot` for future A/B control |
@@ -56,3 +56,7 @@ An immutable root update plan can now be formed for a valid next-generation root
 The plan can produce a sealed `PREPARED` journal record with its exact transaction identity, alternate target, and payload checksum. This bounded transformation still performs no device I/O, snapshot write, journal persistence, commit transition, or superblock update.
 
 VaultFS can now persist that sealed prepared record to a caller-selected bounded Atlas journal block and load it back through the canonical journal wire validation. This remains preparation only: it does not write the next root snapshot, commit the record, replace a superblock, or claim an atomic update.
+
+The next bounded ordered operation can store the next root-directory snapshot in the alternate root slot. It first loads a sealed `PREPARED` journal from an explicitly separate Atlas block and requires that its transaction ID, alternate target, and payload checksum exactly match the immutable plan and valid next-generation root block. The operation also requires the plan’s target to be the selected valid format-3 superblock’s backup root reference; it never overwrites the current primary snapshot. Host coverage demonstrates that the generation-7 superblock remains current after the generation-8 alternate snapshot has been written, while a subsequently stored generation-8 superblock selects that alternate snapshot. Malformed journal bytes, a journal location that overlaps either root slot, a non-alternate target, and a wrong root generation are rejected before a snapshot write.
+
+This is a checked RAM/block ordering primitive, not a crash-safe root update protocol. It does not prove that the prepared record reached persistent media, turn it into `COMMITTED`, promote redundant superblocks, replay after loss of power, handle torn writes, allocate slots, or establish atomicity on physical storage. Those boundaries remain explicit subsequent milestones.

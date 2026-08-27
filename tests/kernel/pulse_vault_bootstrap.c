@@ -24,7 +24,9 @@ int main(void) {
     VAULTFS_JOURNAL_ENTRY loaded_journal_entry;
     VAULTFS_RECOVERY_DECISION recovery_decision;
     VAULTFS_ROOT_UPDATE_PLAN update_plan;
+    VAULTFS_ROOT_UPDATE_PLAN invalid_update_plan;
     VAULTFS_DIRECTORY directory;
+    VAULTFS_ROOT_DIRECTORY_BLOCK current_root_block;
     VAULTFS_ROOT_DIRECTORY_BLOCK root_block;
     VAULTFS_ROOT_DIRECTORY_BLOCK loaded_root_block;
     VAULTFS_ROOT_DIRECTORY_BLOCK backup_root_block;
@@ -58,6 +60,7 @@ int main(void) {
     }
     vaultfs_root_directory_block_initialize(&root_block, &directory, UINT64_C(8));
     vaultfs_root_directory_block_initialize(&backup_root_block, &directory, UINT64_C(8));
+    vaultfs_root_directory_block_initialize(&current_root_block, &directory, UINT64_C(7));
 
     vaultfs_superblock_initialize(&primary, UINT64_C(7), 0U, UINT64_C(2), UINT64_C(3), UINT64_C(70));
     vaultfs_superblock_initialize(&backup, UINT64_C(8), 1U, UINT64_C(2), UINT64_C(3), UINT64_C(80));
@@ -88,15 +91,26 @@ int main(void) {
                     superblock_wire[8] == VAULTFS_FORMAT_VERSION && superblock_wire[12] == 0U &&
                     superblock_wire[40] == 2U && superblock_wire[48] == 3U,
                     "primary uses canonical little-endian superblock wire bytes") ||
-        !expect(vaultfs_superblock_store(&device, 1U, &backup), "backup stores") ||
+        !expect(vaultfs_root_directory_block_valid(&current_root_block),
+                    "current root directory block checksum validates") ||
+        !expect(vaultfs_root_directory_block_store(&device, &primary, &current_root_block),
+                    "current root directory block stores") ||
+        !expect(vaultfs_root_directory_backup_block_store(&device, &primary, &current_root_block),
+                    "current backup root directory block stores") ||
+        !expect(vaultfs_root_directory_block_load_dual(&device, &primary, &loaded_root_block) &&
+                    loaded_root_block.generation == UINT64_C(7),
+                    "old superblock selects current root before ordered update") ||
         !expect(vaultfs_root_directory_block_valid(&root_block), "root directory block checksum validates") ||
-        !expect(vaultfs_root_directory_block_store(&device, &backup, &root_block), "root directory block stores") ||
-        !expect(vaultfs_root_directory_backup_block_store(&device, &backup, &backup_root_block),
-                    "backup root directory block stores") ||
-        !expect(vaultfs_root_directory_block_load(&device, &backup, &loaded_root_block) &&
+        !expect(vaultfs_root_update_snapshot_store(&device, UINT64_C(4), &primary, &update_plan, &root_block),
+                    "prepared journal authorizes alternate next root snapshot store") ||
+        !expect(vaultfs_root_directory_block_load_dual(&device, &primary, &loaded_root_block) &&
+                    loaded_root_block.generation == UINT64_C(7),
+                    "old superblock remains current after alternate snapshot store") ||
+        !expect(vaultfs_superblock_store(&device, 1U, &backup), "backup stores") ||
+        !expect(vaultfs_root_directory_block_load_dual(&device, &backup, &loaded_root_block) &&
                     loaded_root_block.generation == UINT64_C(8) && loaded_root_block.entry_count == 1U &&
                     loaded_root_block.entries[0].object_id == UINT64_C(17),
-                    "root directory block loads through sealed superblock reference") ||
+                    "promoted superblock loads alternate next root snapshot") ||
         !expect(vaultfs_root_directory_block_load_dual(&device, &backup, &loaded_root_block) &&
                     loaded_root_block.generation == UINT64_C(8),
                     "dual root directory load selects a matching media snapshot") ||
@@ -104,11 +118,34 @@ int main(void) {
                     &root_block, &backup_root_block, UINT64_C(8), &selected_root_block) &&
                     selected_root_block.generation == UINT64_C(8),
                     "dual root snapshot selector retains a matching valid snapshot") ||
-        !expect(!vaultfs_root_directory_block_load(&device, &primary, &loaded_root_block),
-                    "root directory block generation mismatch is rejected") ||
+        !expect(vaultfs_root_directory_block_load(&device, &primary, &loaded_root_block) &&
+                    loaded_root_block.generation == UINT64_C(7),
+                    "primary-only loader retains old root before promotion") ||
         !expect(vaultfs_superblock_load_latest(&device, 0U, 1U, &selected) &&
                     selected.generation == UINT64_C(8) && selected.root_directory_block == UINT64_C(2),
                     "newer valid superblock is selected")) {
+        return 1;
+    }
+
+    invalid_update_plan = update_plan;
+    invalid_update_plan.target_root_block = primary.root_directory_block;
+    if (!expect(!vaultfs_root_update_snapshot_store(
+                    &device, UINT64_C(4), &primary, &invalid_update_plan, &root_block),
+                    "snapshot store rejects plan target outside alternate root") ||
+        !expect(!vaultfs_root_update_snapshot_store(&device, primary.root_directory_block, &primary, &update_plan,
+                                                     &root_block),
+                    "snapshot store rejects journal location overlapping a root snapshot") ||
+        !expect(!vaultfs_root_update_snapshot_store(&device, UINT64_C(4), &primary, &update_plan,
+                                                     &current_root_block),
+                    "snapshot store rejects next root with wrong generation")) {
+        return 1;
+    }
+
+    loaded_journal_entry.checksum ^= UINT32_C(1);
+    if (!expect(atlas_block_write(&device, UINT64_C(4), &loaded_journal_entry, sizeof(loaded_journal_entry)) &&
+                    !vaultfs_root_update_snapshot_store(&device, UINT64_C(4), &primary, &update_plan, &root_block) &&
+                    vaultfs_root_update_journal_store_prepared(&device, UINT64_C(4), &update_plan),
+                    "snapshot store rejects malformed persisted prepared journal")) {
         return 1;
     }
 

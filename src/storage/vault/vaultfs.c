@@ -423,6 +423,34 @@ int vaultfs_root_update_journal_store_prepared(
            vaultfs_journal_store(device, journal_block, &journal);
 }
 
+int vaultfs_root_update_snapshot_store(
+    ATLAS_RAM_BLOCK_DEVICE *device,
+    uint64_t journal_block,
+    const VAULTFS_SUPERBLOCK *superblock,
+    const VAULTFS_ROOT_UPDATE_PLAN *plan,
+    const VAULTFS_ROOT_DIRECTORY_BLOCK *next_root_block) {
+    VAULTFS_JOURNAL_ENTRY journal;
+    uint8_t bytes[VAULTFS_ROOT_DIRECTORY_WIRE_BYTES];
+
+    if (device == (void *)0 || plan == (const void *)0 || plan->transaction_id == 0U ||
+        !vaultfs_superblock_valid(superblock) || !vaultfs_root_directory_block_valid(next_root_block) ||
+        superblock->generation == UINT64_MAX ||
+        journal_block == superblock->root_directory_block ||
+        journal_block == superblock->backup_root_directory_block ||
+        plan->target_root_block != superblock->backup_root_directory_block ||
+        plan->next_generation != superblock->generation + UINT64_C(1) ||
+        next_root_block->generation != plan->next_generation ||
+        next_root_block->checksum != plan->payload_checksum ||
+        !vaultfs_journal_load(device, journal_block, &journal) ||
+        journal.state != VAULTFS_JOURNAL_PREPARED || journal.transaction_id != plan->transaction_id ||
+        journal.target_block != plan->target_root_block ||
+        journal.payload_checksum != plan->payload_checksum) {
+        return 0;
+    }
+    vaultfs_root_directory_encode(next_root_block, bytes);
+    return atlas_block_write(device, plan->target_root_block, bytes, sizeof(bytes));
+}
+
 int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot) {
     if (!vaultfs_superblock_valid(superblock) || !vaultfs_system_slot_valid(target_slot) ||
         target_slot == superblock->active_system_slot) {

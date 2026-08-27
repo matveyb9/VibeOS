@@ -11,7 +11,7 @@
 | Компонент | Начальное поведение |
 |---|---|
 | Atlas backend | Bounded RAM block device с block по 4 КиБ |
-| VaultFS metadata | Format `2` primary и backup superblock |
+| VaultFS metadata | Format `3` primary и backup superblock с distinct dual-root reference |
 | Integrity | CRC32 по sealed metadata field |
 | Selection | Наивысшая valid generation, primary при равенстве |
 | System slot | Закодирован как `active_system_slot` для будущего A/B control |
@@ -56,3 +56,7 @@ VaultFS теперь также предоставляет conservative recovery
 Plan может сформировать sealed `PREPARED` journal record с exact transaction identity, alternate target и payload checksum. Эта bounded transformation по-прежнему не выполняет device I/O, snapshot write, journal persistence, commit transition или superblock update.
 
 VaultFS теперь может persist этот sealed prepared record в caller-selected bounded Atlas journal block и load его обратно через canonical journal wire validation. Это остаётся только preparation: оно не write следующий root snapshot, не commit record, не replace superblock и не заявляет atomic update.
+
+Следующая bounded ordered operation может store next root-directory snapshot в alternate root slot. Она сначала load sealed `PREPARED` journal из явно отдельного Atlas block и требует точного совпадения его transaction ID, alternate target и payload checksum с immutable plan и valid next-generation root block. Операция также требует, чтобы target plan был backup root reference выбранного valid format-3 superblock; current primary snapshot она никогда не overwrite. Host coverage показывает, что superblock generation 7 остаётся current после записи alternate snapshot generation 8, а затем сохранённый superblock generation 8 выбирает этот alternate snapshot. Malformed journal bytes, journal location, перекрывающий любой root slot, non-alternate target и wrong root generation отклоняются до snapshot write.
+
+Это checked RAM/block ordering primitive, а не crash-safe root update protocol. Он не доказывает, что prepared record достиг persistent media, не переводит его в `COMMITTED`, не promote redundant superblock, не replay после потери питания, не обрабатывает torn write, не allocation slot и не устанавливает atomicity на physical storage. Эти границы остаются явно отдельными следующими milestones.
