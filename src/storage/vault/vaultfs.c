@@ -511,6 +511,20 @@ int vaultfs_root_directory_block_store(
     return atlas_block_write(device, superblock->root_directory_block, bytes, sizeof(bytes));
 }
 
+int vaultfs_root_directory_backup_block_store(
+    ATLAS_RAM_BLOCK_DEVICE *device,
+    const VAULTFS_SUPERBLOCK *superblock,
+    const VAULTFS_ROOT_DIRECTORY_BLOCK *root_block) {
+    uint8_t bytes[VAULTFS_ROOT_DIRECTORY_WIRE_BYTES];
+
+    if (!vaultfs_superblock_valid(superblock) || !vaultfs_root_directory_block_valid(root_block) ||
+        root_block->generation != superblock->generation) {
+        return 0;
+    }
+    vaultfs_root_directory_encode(root_block, bytes);
+    return atlas_block_write(device, superblock->backup_root_directory_block, bytes, sizeof(bytes));
+}
+
 int vaultfs_root_directory_block_load(
     const ATLAS_RAM_BLOCK_DEVICE *device,
     const VAULTFS_SUPERBLOCK *superblock,
@@ -523,6 +537,25 @@ int vaultfs_root_directory_block_load(
     }
     vaultfs_root_directory_decode(root_block, bytes);
     return vaultfs_root_directory_block_valid(root_block) && root_block->generation == superblock->generation;
+}
+
+int vaultfs_root_directory_block_load_dual(
+    const ATLAS_RAM_BLOCK_DEVICE *device,
+    const VAULTFS_SUPERBLOCK *superblock,
+    VAULTFS_ROOT_DIRECTORY_BLOCK *root_block) {
+    uint8_t primary_bytes[VAULTFS_ROOT_DIRECTORY_WIRE_BYTES];
+    uint8_t backup_bytes[VAULTFS_ROOT_DIRECTORY_WIRE_BYTES];
+    VAULTFS_ROOT_DIRECTORY_BLOCK primary;
+    VAULTFS_ROOT_DIRECTORY_BLOCK backup;
+
+    if (!vaultfs_superblock_valid(superblock) || root_block == (void *)0 ||
+        !atlas_block_read(device, superblock->root_directory_block, primary_bytes, sizeof(primary_bytes)) ||
+        !atlas_block_read(device, superblock->backup_root_directory_block, backup_bytes, sizeof(backup_bytes))) {
+        return 0;
+    }
+    vaultfs_root_directory_decode(&primary, primary_bytes);
+    vaultfs_root_directory_decode(&backup, backup_bytes);
+    return vaultfs_root_directory_block_select(&primary, &backup, superblock->generation, root_block);
 }
 
 int vaultfs_root_directory_block_select(

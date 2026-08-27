@@ -70,10 +70,15 @@ int main(void) {
         !expect(vaultfs_superblock_store(&device, 1U, &backup), "backup stores") ||
         !expect(vaultfs_root_directory_block_valid(&root_block), "root directory block checksum validates") ||
         !expect(vaultfs_root_directory_block_store(&device, &backup, &root_block), "root directory block stores") ||
+        !expect(vaultfs_root_directory_backup_block_store(&device, &backup, &backup_root_block),
+                    "backup root directory block stores") ||
         !expect(vaultfs_root_directory_block_load(&device, &backup, &loaded_root_block) &&
                     loaded_root_block.generation == UINT64_C(8) && loaded_root_block.entry_count == 1U &&
                     loaded_root_block.entries[0].object_id == UINT64_C(17),
                     "root directory block loads through sealed superblock reference") ||
+        !expect(vaultfs_root_directory_block_load_dual(&device, &backup, &loaded_root_block) &&
+                    loaded_root_block.generation == UINT64_C(8),
+                    "dual root directory load selects a matching media snapshot") ||
         !expect(vaultfs_root_directory_block_select(
                     &root_block, &backup_root_block, UINT64_C(8), &selected_root_block) &&
                     selected_root_block.generation == UINT64_C(8),
