@@ -13,11 +13,13 @@ PRELUDE_BLOB_OBJ := $(BUILD_DIR)/prelude/embedded-pulse.obj
 PRELUDE_EFI := $(BUILD_DIR)/prelude/BOOTX64.EFI
 PULSE_ENTRY_OBJ := $(BUILD_DIR)/pulse/entry.obj
 PULSE_INTERRUPTS_ENTRY_OBJ := $(BUILD_DIR)/pulse/interrupts/x86_64.obj
+PULSE_CONTEXT_ENTRY_OBJ := $(BUILD_DIR)/pulse/schedule/context-x86_64.obj
 PULSE_MAIN_OBJ := $(BUILD_DIR)/pulse/main.obj
 PULSE_MEMORY_OBJ := $(BUILD_DIR)/pulse/memory/early.obj
 PULSE_PAGING_OBJ := $(BUILD_DIR)/pulse/memory/paging-x86_64.obj
 PULSE_INTERRUPTS_OBJ := $(BUILD_DIR)/pulse/interrupts/idt-x86_64.obj
 PULSE_SCHEDULER_OBJ := $(BUILD_DIR)/pulse/schedule/round-robin.obj
+PULSE_CONTEXT_OBJ := $(BUILD_DIR)/pulse/schedule/context.obj
 PULSE_PANIC_OBJ := $(BUILD_DIR)/pulse/debug/panic.obj
 PULSE_ELF := $(BUILD_DIR)/pulse/PULSE.ELF
 PULSE_BIN := $(BUILD_DIR)/pulse/pulse.bin
@@ -25,6 +27,7 @@ PULSE_MEMORY_TEST := $(BUILD_DIR)/tests/pulse-memory-bootstrap
 PULSE_PAGING_TEST := $(BUILD_DIR)/tests/pulse-paging-bootstrap
 PULSE_INTERRUPTS_TEST := $(BUILD_DIR)/tests/pulse-interrupts-bootstrap
 PULSE_SCHEDULER_TEST := $(BUILD_DIR)/tests/pulse-scheduler-bootstrap
+PULSE_CONTEXT_TEST := $(BUILD_DIR)/tests/pulse-context-bootstrap
 ESP_IMAGE := $(BUILD_DIR)/vibeos-uefi-esp.img
 ESP_IMAGE_BYTES := 67108864
 
@@ -60,6 +63,10 @@ $(PULSE_INTERRUPTS_ENTRY_OBJ): $(PULSE_DIR)/interrupts/x86_64.S
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_ASFLAGS) -c $< -o $@
 
+$(PULSE_CONTEXT_ENTRY_OBJ): $(PULSE_DIR)/schedule/context-x86_64.S
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_ASFLAGS) -c $< -o $@
+
 $(PULSE_MAIN_OBJ): $(PULSE_DIR)/main.c src/platform/dawn/include/dawn.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
@@ -80,14 +87,18 @@ $(PULSE_SCHEDULER_OBJ): $(PULSE_DIR)/schedule/round-robin.c $(PULSE_DIR)/include
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
+$(PULSE_CONTEXT_OBJ): $(PULSE_DIR)/schedule/context.c $(PULSE_DIR)/include/context.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
 $(PULSE_PANIC_OBJ): $(PULSE_DIR)/debug/panic.c $(PULSE_DIR)/include/panic.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
-$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
+$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
 	@mkdir -p $(dir $@)
 	$(LLD_LD) -m elf_x86_64 -nostdlib --build-id=none -T $(PULSE_DIR)/linker/x86_64.ld \
-		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_PANIC_OBJ)
+		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_PANIC_OBJ)
 
 $(PULSE_BIN): $(PULSE_ELF)
 	$(LLVM_OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $< $@
@@ -112,6 +123,11 @@ $(PULSE_SCHEDULER_TEST): tests/kernel/pulse_scheduler_bootstrap.c $(PULSE_DIR)/s
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include \
 		tests/kernel/pulse_scheduler_bootstrap.c $(PULSE_DIR)/schedule/round-robin.c -o $@
 
+$(PULSE_CONTEXT_TEST): tests/kernel/pulse_context_bootstrap.c $(PULSE_DIR)/schedule/context.c $(PULSE_DIR)/include/context.h
+	@mkdir -p $(dir $@)
+	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include \
+		tests/kernel/pulse_context_bootstrap.c $(PULSE_DIR)/schedule/context.c -o $@
+
 $(PRELUDE_OBJ): $(PRELUDE_DIR)/main.c $(PRELUDE_DIR)/include/uefi.h src/platform/dawn/include/dawn.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PRELUDE_CFLAGS) -c $< -o $@
@@ -134,16 +150,17 @@ $(ESP_IMAGE): $(PRELUDE_EFI)
 	mcopy -i $@ $(PRELUDE_EFI) ::/EFI/BOOT/BOOTX64.EFI
 
 check-uefi: $(ESP_IMAGE)
-	tools/check-uefi.sh $(ESP_IMAGE) "PULSE: breakpoint trap handled"
+	tools/check-uefi.sh $(ESP_IMAGE) "PULSE: task context verified" "PULSE: breakpoint trap handled"
 
 check-panic: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE) "PULSE PANIC: unhandled interrupt"
 
-test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TEST) $(PULSE_SCHEDULER_TEST)
+test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TEST) $(PULSE_SCHEDULER_TEST) $(PULSE_CONTEXT_TEST)
 	$(PULSE_MEMORY_TEST)
 	$(PULSE_PAGING_TEST)
 	$(PULSE_INTERRUPTS_TEST)
 	$(PULSE_SCHEDULER_TEST)
+	$(PULSE_CONTEXT_TEST)
 	$(MAKE) BUILD_DIR=build-panic PULSE_PROBE=panic check-panic
 
 test-panic:

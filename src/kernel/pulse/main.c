@@ -10,6 +10,7 @@
 #include "paging.h"
 #include "interrupts.h"
 #include "scheduler.h"
+#include "context.h"
 
 static void pulse_debug_putc(char character) {
     __asm__ volatile("outb %0, %w1" : : "a"(character), "d"((uint16_t)0x402));
@@ -57,6 +58,10 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         __asm__ volatile("ud2");
         pulse_debug_write("PULSE: invalid opcode unexpectedly returned\n");
 #else
+        if (!pulse_context_run_probe()) {
+            pulse_debug_write("PULSE: task context bootstrap failed\n");
+            pulse_debug_exit();
+        }
         pulse_interrupts_trigger_breakpoint();
         pulse_debug_write("PULSE: breakpoint dispatch unexpectedly returned\n");
 #endif
