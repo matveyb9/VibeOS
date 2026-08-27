@@ -15,7 +15,7 @@ static int expect(int condition, const char *message) {
 }
 
 int main(void) {
-    uint8_t storage[ATLAS_BLOCK_BYTES * 4U];
+    uint8_t storage[ATLAS_BLOCK_BYTES * 5U];
     ATLAS_RAM_BLOCK_DEVICE device;
     VAULTFS_SUPERBLOCK primary;
     VAULTFS_SUPERBLOCK backup;
@@ -57,15 +57,15 @@ int main(void) {
     vaultfs_root_directory_block_initialize(&root_block, &directory, UINT64_C(8));
     vaultfs_root_directory_block_initialize(&backup_root_block, &directory, UINT64_C(8));
 
-    vaultfs_superblock_initialize(&primary, UINT64_C(7), 0U, UINT64_C(2), UINT64_C(70));
-    vaultfs_superblock_initialize(&backup, UINT64_C(8), 1U, UINT64_C(2), UINT64_C(80));
+    vaultfs_superblock_initialize(&primary, UINT64_C(7), 0U, UINT64_C(2), UINT64_C(3), UINT64_C(70));
+    vaultfs_superblock_initialize(&backup, UINT64_C(8), 1U, UINT64_C(2), UINT64_C(3), UINT64_C(80));
     if (!expect(vaultfs_superblock_valid(&primary) && primary.root_directory_block == UINT64_C(2),
                     "primary stores sealed root-directory block metadata") ||
         !expect(vaultfs_superblock_store(&device, 0U, &primary), "primary stores") ||
         !expect(atlas_block_read(&device, 0U, superblock_wire, sizeof(superblock_wire)) &&
                     superblock_wire[0] == 0x31U && superblock_wire[1] == 0x53U &&
                     superblock_wire[8] == VAULTFS_FORMAT_VERSION && superblock_wire[12] == 0U &&
-                    superblock_wire[40] == 2U,
+                    superblock_wire[40] == 2U && superblock_wire[48] == 3U,
                     "primary uses canonical little-endian superblock wire bytes") ||
         !expect(vaultfs_superblock_store(&device, 1U, &backup), "backup stores") ||
         !expect(vaultfs_root_directory_block_valid(&root_block), "root directory block checksum validates") ||
@@ -100,8 +100,8 @@ int main(void) {
         !expect(vaultfs_journal_commit(&journal_entry), "prepared entry commits") ||
         !expect(journal_entry.state == VAULTFS_JOURNAL_COMMITTED && vaultfs_journal_valid(&journal_entry),
                     "committed entry is resealed") ||
-        !expect(vaultfs_journal_store(&device, UINT64_C(3), &journal_entry) &&
-                    vaultfs_journal_load(&device, UINT64_C(3), &loaded_journal_entry) &&
+        !expect(vaultfs_journal_store(&device, UINT64_C(4), &journal_entry) &&
+                    vaultfs_journal_load(&device, UINT64_C(4), &loaded_journal_entry) &&
                     loaded_journal_entry.transaction_id == UINT64_C(9) &&
                     loaded_journal_entry.state == VAULTFS_JOURNAL_COMMITTED,
                     "committed journal entry round-trips through canonical wire bytes") ||

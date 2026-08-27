@@ -120,8 +120,9 @@ static void vaultfs_superblock_encode(const VAULTFS_SUPERBLOCK *superblock, uint
     vaultfs_write_u64_le(&bytes[24], superblock->active_system_slot);
     vaultfs_write_u64_le(&bytes[32], superblock->pending_system_slot);
     vaultfs_write_u64_le(&bytes[40], superblock->root_directory_block);
-    vaultfs_write_u64_le(&bytes[48], superblock->journal_sequence);
-    vaultfs_write_u32_le(&bytes[56], superblock->checksum);
+    vaultfs_write_u64_le(&bytes[48], superblock->backup_root_directory_block);
+    vaultfs_write_u64_le(&bytes[56], superblock->journal_sequence);
+    vaultfs_write_u32_le(&bytes[64], superblock->checksum);
 }
 
 static void vaultfs_superblock_decode(VAULTFS_SUPERBLOCK *superblock, const uint8_t *bytes) {
@@ -138,8 +139,9 @@ static void vaultfs_superblock_decode(VAULTFS_SUPERBLOCK *superblock, const uint
     superblock->active_system_slot = vaultfs_read_u64_le(&bytes[24]);
     superblock->pending_system_slot = vaultfs_read_u64_le(&bytes[32]);
     superblock->root_directory_block = vaultfs_read_u64_le(&bytes[40]);
-    superblock->journal_sequence = vaultfs_read_u64_le(&bytes[48]);
-    superblock->checksum = vaultfs_read_u32_le(&bytes[56]);
+    superblock->backup_root_directory_block = vaultfs_read_u64_le(&bytes[48]);
+    superblock->journal_sequence = vaultfs_read_u64_le(&bytes[56]);
+    superblock->checksum = vaultfs_read_u32_le(&bytes[64]);
 }
 
 static void vaultfs_journal_encode(const VAULTFS_JOURNAL_ENTRY *entry, uint8_t *bytes) {
@@ -241,6 +243,7 @@ void vaultfs_superblock_initialize(
     uint64_t generation,
     uint64_t active_system_slot,
     uint64_t root_directory_block,
+    uint64_t backup_root_directory_block,
     uint64_t journal_sequence) {
     if (superblock != (void *)0) {
         superblock->magic = VAULTFS_SUPERBLOCK_MAGIC;
@@ -250,6 +253,7 @@ void vaultfs_superblock_initialize(
         superblock->active_system_slot = active_system_slot;
         superblock->pending_system_slot = VAULTFS_SYSTEM_SLOT_NONE;
         superblock->root_directory_block = root_directory_block;
+        superblock->backup_root_directory_block = backup_root_directory_block;
         superblock->journal_sequence = journal_sequence;
         vaultfs_superblock_seal(superblock);
     }
@@ -260,6 +264,8 @@ int vaultfs_superblock_valid(const VAULTFS_SUPERBLOCK *superblock) {
            superblock->format_version == VAULTFS_FORMAT_VERSION &&
            superblock->block_bytes == ATLAS_BLOCK_BYTES && vaultfs_system_slot_valid(superblock->active_system_slot) &&
            superblock->root_directory_block != VAULTFS_ROOT_DIRECTORY_BLOCK_NONE &&
+           superblock->backup_root_directory_block != VAULTFS_ROOT_DIRECTORY_BLOCK_NONE &&
+           superblock->root_directory_block != superblock->backup_root_directory_block &&
            (superblock->pending_system_slot == VAULTFS_SYSTEM_SLOT_NONE ||
             vaultfs_system_slot_valid(superblock->pending_system_slot)) &&
            superblock->checksum == vaultfs_superblock_checksum(superblock);
@@ -558,8 +564,8 @@ int vaultfs_runtime_probe(void) {
     if (!atlas_ram_block_device_init(&device, storage, sizeof(storage))) {
         return 0;
     }
-    vaultfs_superblock_initialize(&primary, UINT64_C(5), 0U, UINT64_C(2), UINT64_C(50));
-    vaultfs_superblock_initialize(&backup, UINT64_C(4), 1U, UINT64_C(2), UINT64_C(40));
+    vaultfs_superblock_initialize(&primary, UINT64_C(5), 0U, UINT64_C(2), UINT64_C(3), UINT64_C(50));
+    vaultfs_superblock_initialize(&backup, UINT64_C(4), 1U, UINT64_C(2), UINT64_C(3), UINT64_C(40));
     if (!vaultfs_superblock_store(&device, 0U, &primary) ||
         !vaultfs_superblock_store(&device, 1U, &backup)) {
         return 0;
