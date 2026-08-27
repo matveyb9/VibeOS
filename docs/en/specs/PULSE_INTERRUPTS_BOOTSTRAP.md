@@ -12,7 +12,7 @@ Pulse establishes a complete 256-entry Interrupt Descriptor Table immediately af
 
 Maskable interrupts remain disabled. Pulse deliberately executes `INT3` after loading `IDTR`; the breakpoint handler writes `PULSE: breakpoint trap handled` to QEMU's test channel and terminates the emulator. This proves the active IDT, gate offset, selector, and exception control transfer without prematurely enabling device interrupts.
 
-Pulse also has a separate pure controller-selection policy. It consumes only the already-validated bounded MADT metadata: PIC remains the active bootstrap controller, while the presence of at least one Local APIC and one I/O APIC record marks only a future APIC handoff as eligible. The policy performs no port I/O, does not change PIC masks, and never maps or programs an APIC.
+Pulse also has a separate pure controller-selection policy. It consumes only the already-validated bounded MADT metadata: PIC remains the active bootstrap controller, while the presence of at least one Local APIC and one I/O APIC record marks only a future APIC handoff as eligible. When there is an enabled Local APIC record, a nonzero MADT local-controller address, and a nonzero I/O APIC address, it may form an immutable handoff plan containing those validated identifiers and the first I/O APIC GSI base. The policy performs no port I/O, does not change PIC masks, and never maps or programs an APIC.
 
 ## Current limits
 
