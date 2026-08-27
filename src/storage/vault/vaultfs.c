@@ -519,6 +519,33 @@ int vaultfs_root_directory_block_load(
     return vaultfs_root_directory_block_valid(root_block) && root_block->generation == superblock->generation;
 }
 
+int vaultfs_root_directory_block_select(
+    const VAULTFS_ROOT_DIRECTORY_BLOCK *primary,
+    const VAULTFS_ROOT_DIRECTORY_BLOCK *backup,
+    uint64_t generation,
+    VAULTFS_ROOT_DIRECTORY_BLOCK *selected) {
+    const VAULTFS_ROOT_DIRECTORY_BLOCK *source;
+    uint32_t index;
+
+    if (selected == (void *)0) {
+        return 0;
+    }
+    source = primary != (const void *)0 && vaultfs_root_directory_block_valid(primary) &&
+                     primary->generation == generation
+                 ? primary
+                 : backup != (const void *)0 && vaultfs_root_directory_block_valid(backup) &&
+                       backup->generation == generation
+                     ? backup
+                     : (const void *)0;
+    if (source == (const void *)0) {
+        return 0;
+    }
+    for (index = 0U; index < sizeof(*selected); ++index) {
+        ((uint8_t *)selected)[index] = ((const uint8_t *)source)[index];
+    }
+    return 1;
+}
+
 int vaultfs_runtime_probe(void) {
     static uint8_t storage[ATLAS_BLOCK_BYTES * 4U];
     ATLAS_RAM_BLOCK_DEVICE device;

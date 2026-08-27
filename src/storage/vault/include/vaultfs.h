@@ -121,6 +121,11 @@ int vaultfs_root_directory_block_load(
     const ATLAS_RAM_BLOCK_DEVICE *device,
     const VAULTFS_SUPERBLOCK *superblock,
     VAULTFS_ROOT_DIRECTORY_BLOCK *root_block);
+int vaultfs_root_directory_block_select(
+    const VAULTFS_ROOT_DIRECTORY_BLOCK *primary,
+    const VAULTFS_ROOT_DIRECTORY_BLOCK *backup,
+    uint64_t generation,
+    VAULTFS_ROOT_DIRECTORY_BLOCK *selected);
 int vaultfs_runtime_probe(void);
 
 #endif

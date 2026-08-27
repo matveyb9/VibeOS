@@ -25,6 +25,8 @@ int main(void) {
     VAULTFS_DIRECTORY directory;
     VAULTFS_ROOT_DIRECTORY_BLOCK root_block;
     VAULTFS_ROOT_DIRECTORY_BLOCK loaded_root_block;
+    VAULTFS_ROOT_DIRECTORY_BLOCK backup_root_block;
+    VAULTFS_ROOT_DIRECTORY_BLOCK selected_root_block;
     VAULTFS_DIRECTORY_ENTRY entry = {
         UINT64_C(17), UINT64_C(2), UINT64_C(128), VAULTFS_ENTRY_FILE, "readme.txt"};
     uint8_t superblock_wire[VAULTFS_SUPERBLOCK_WIRE_BYTES];
@@ -53,6 +55,7 @@ int main(void) {
         return 1;
     }
     vaultfs_root_directory_block_initialize(&root_block, &directory, UINT64_C(8));
+    vaultfs_root_directory_block_initialize(&backup_root_block, &directory, UINT64_C(8));
 
     vaultfs_superblock_initialize(&primary, UINT64_C(7), 0U, UINT64_C(2), UINT64_C(70));
     vaultfs_superblock_initialize(&backup, UINT64_C(8), 1U, UINT64_C(2), UINT64_C(80));
@@ -71,6 +74,10 @@ int main(void) {
                     loaded_root_block.generation == UINT64_C(8) && loaded_root_block.entry_count == 1U &&
                     loaded_root_block.entries[0].object_id == UINT64_C(17),
                     "root directory block loads through sealed superblock reference") ||
+        !expect(vaultfs_root_directory_block_select(
+                    &root_block, &backup_root_block, UINT64_C(8), &selected_root_block) &&
+                    selected_root_block.generation == UINT64_C(8),
+                    "dual root snapshot selector retains a matching valid snapshot") ||
         !expect(!vaultfs_root_directory_block_load(&device, &primary, &loaded_root_block),
                     "root directory block generation mismatch is rejected") ||
         !expect(vaultfs_superblock_load_latest(&device, 0U, 1U, &selected) &&
