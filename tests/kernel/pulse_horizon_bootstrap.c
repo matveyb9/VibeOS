@@ -38,6 +38,9 @@ int main(void) {
                     horizon_build_desktop_scene_for_state(640U, 480U, &focus_state, &scene) &&
                     scene.rectangles[2].x == 233U && scene.rectangles[2].y == 86U,
                 "focus state positions the retained indicator at the focused card") ||
+        !expect(horizon_render_desktop_for_state(&framebuffer, &focus_state) &&
+                    pixels[(86U * 640U) + 233U] == UINT32_C(0x00e6f1ff),
+                "focused state renders its indicator at the retained geometry") ||
         !expect(horizon_render_desktop(&framebuffer), "desktop scene renders") ||
         !expect(pixels[0] == UINT32_C(0x0018314d), "header overlays desktop at top-left") ||
         !expect(pixels[(450U * 640U) + 100U] == UINT32_C(0x0016a8a0), "dock renders near lower desktop")) {

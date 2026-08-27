@@ -43,8 +43,6 @@ pulse_x86_keyboard_interrupt:
 	pushq %r10
 	pushq %r11
 	call atlas_i8042_keyboard_handle_irq1
-	testl %eax, %eax
-	jnz pulse_x86_keyboard_event_handled
 	popq %r11
 	popq %r10
 	popq %r9
@@ -55,9 +53,6 @@ pulse_x86_keyboard_interrupt:
 	popq %rcx
 	popq %rax
 	iretq
-
-pulse_x86_keyboard_event_handled:
-	leaq pulse_x86_keyboard_message(%rip), %rsi
 
 pulse_x86_debug_exit:
 	cld
@@ -81,5 +76,3 @@ pulse_x86_breakpoint_message:
 	.asciz "PULSE: breakpoint trap handled\n"
 pulse_x86_timer_message:
 	.asciz "PULSE: timer interrupt handled\n"
-pulse_x86_keyboard_message:
-	.asciz "ATLAS: keyboard IRQ1 event handled\n"

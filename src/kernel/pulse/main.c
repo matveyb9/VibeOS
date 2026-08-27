@@ -106,6 +106,16 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         __asm__ volatile("ud2");
         pulse_debug_write("PULSE: invalid opcode unexpectedly returned\n");
 #elif defined(PULSE_PROBE_keyboard)
+        HORIZON_DESKTOP_STATE desktop_state;
+        HORIZON_INPUT_PUMP_RESULT input_result;
+        PRISM_FRAMEBUFFER framebuffer;
+
+        if (!prism_framebuffer_from_dawn(context, &framebuffer) ||
+            !horizon_desktop_state_initialize(&desktop_state, 3U) ||
+            !horizon_render_desktop_for_state(&framebuffer, &desktop_state)) {
+            pulse_debug_write("HORIZON: keyboard desktop initialization failed\n");
+            pulse_debug_exit();
+        }
         if (!atlas_i8042_keyboard_prepare_irq1()) {
             pulse_debug_write("ATLAS: keyboard IRQ1 preparation failed\n");
             pulse_debug_exit();
@@ -114,6 +124,18 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         __asm__ volatile("sti" : : : "memory");
         for (;;) {
             __asm__ volatile("hlt");
+            if (!horizon_input_pump(&desktop_state, HORIZON_INPUT_PUMP_MAX_EVENTS, &input_result)) {
+                pulse_debug_write("HORIZON: keyboard event pump failed\n");
+                pulse_debug_exit();
+            }
+            if (input_result.redraw_requested != 0U) {
+                if (!horizon_render_desktop_for_state(&framebuffer, &desktop_state)) {
+                    pulse_debug_write("HORIZON: keyboard focus redraw failed\n");
+                    pulse_debug_exit();
+                }
+                pulse_debug_write("HORIZON: keyboard focus redrawn\n");
+                pulse_debug_exit();
+            }
         }
 #else
         if (!pulse_context_run_probe()) {

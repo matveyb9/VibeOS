@@ -66,10 +66,16 @@ int horizon_build_desktop_scene(uint32_t width, uint32_t height, CANVAS_SCENE *s
            horizon_build_desktop_scene_for_state(width, height, &desktop, scene);
 }
 
-int horizon_render_desktop(PRISM_FRAMEBUFFER *framebuffer) {
+int horizon_render_desktop_for_state(PRISM_FRAMEBUFFER *framebuffer, const HORIZON_DESKTOP_STATE *state) {
     CANVAS_SCENE scene;
 
     return framebuffer != (void *)0 &&
-           horizon_build_desktop_scene(framebuffer->width, framebuffer->height, &scene) &&
+           horizon_build_desktop_scene_for_state(framebuffer->width, framebuffer->height, state, &scene) &&
            canvas_scene_render(&scene, framebuffer);
+}
+
+int horizon_render_desktop(PRISM_FRAMEBUFFER *framebuffer) {
+    HORIZON_DESKTOP_STATE desktop;
+
+    return horizon_desktop_state_initialize(&desktop, 3U) && horizon_render_desktop_for_state(framebuffer, &desktop);
 }

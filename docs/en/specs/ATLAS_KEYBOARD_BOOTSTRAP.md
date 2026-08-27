@@ -17,7 +17,7 @@ The first Atlas input component accepts legacy translated PS/2 scan-code-set-1 b
 | Hardware I/O | Separate constrained i8042 adapter reads data only after output-ready status and acknowledges PIC IRQ1 |
 | Consumption | `atlas_keyboard_next_event()` returns FIFO events without leaking queue state |
 
-Host probes verify FIFO ordering, key-up preservation, prefix deferral, exact count reporting, and overflow rejection. A separate QEMU profile boots to an IRQ1-ready state, injects an `H` key through QEMU's monitor, and verifies that the interrupt reaches the Atlas queue. USB HID, mouse input, ACPI resource discovery, international layouts, repeat, modifiers, and user-space focus policy are intentionally outside this bootstrap.
+Host probes verify FIFO ordering, key-up preservation, prefix deferral, exact count reporting, and overflow rejection. A separate QEMU profile boots to an IRQ1-ready state, injects an `N` key through QEMU's monitor, and verifies an end-to-end controlled transition: IRQ1 enqueues the event and returns, then the Horizon profile-owned pump consumes it and redraws focus. The IRQ adapter itself remains Horizon-independent and never renders or exits QEMU. USB HID, mouse input, ACPI resource discovery, international layouts, repeat, modifiers, and general user-space focus policy are intentionally outside this bootstrap.
 
 ## Reference
 

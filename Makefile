@@ -368,7 +368,7 @@ check-uefi: $(ESP_IMAGE)
 
 check-keyboard:
 	$(MAKE) BUILD_DIR=build-keyboard PULSE_PROBE=keyboard uefi-image
-	tools/check-keyboard.sh build-keyboard/vibeos-uefi-esp.img "ATLAS: keyboard irq probe ready" "ATLAS: keyboard IRQ1 event handled"
+	tools/check-keyboard.sh build-keyboard/vibeos-uefi-esp.img "ATLAS: keyboard irq probe ready" "HORIZON: keyboard focus redrawn"
 
 check-bios: $(BIOS_IMAGE)
 	tools/check-bios.sh $(BIOS_IMAGE) "PRELUDE BIOS: Dawn Context sealed" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "PULSE: timer interrupt handled"

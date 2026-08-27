@@ -27,6 +27,7 @@ int horizon_runtime_probe(void);
 int horizon_build_desktop_scene_for_state(
     uint32_t width, uint32_t height, const HORIZON_DESKTOP_STATE *state, CANVAS_SCENE *scene);
 int horizon_build_desktop_scene(uint32_t width, uint32_t height, CANVAS_SCENE *scene);
+int horizon_render_desktop_for_state(PRISM_FRAMEBUFFER *framebuffer, const HORIZON_DESKTOP_STATE *state);
 int horizon_render_desktop(PRISM_FRAMEBUFFER *framebuffer);
 
 #endif
