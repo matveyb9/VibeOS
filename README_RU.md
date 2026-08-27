@@ -41,6 +41,7 @@ make check-uefi
 - [Правила документации](docs/ru/DOCUMENTATION.md).
 - [Правила вкладов и рабочего процесса](docs/ru/CONTRIBUTING.md).
 - Первый [x86_64 UEFI-образ Prelude](docs/ru/guides/BUILD_X86_64_UEFI.md).
+- Настройка поддерживаемой [host-системы Prelude](docs/ru/guides/HOST_ENVIRONMENTS.md).
 - Планируемая [платформа приложений и Vibe SDK](docs/ru/SDK.md).
 - [Дорожная карта](docs/ru/ROADMAP.md).
 

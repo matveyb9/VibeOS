@@ -13,6 +13,8 @@
 **Boot path:** UEFI.
 **Support:** First required verification profile.
 
+For host-specific setup on Linux, macOS, or Windows, read [Host environments for Prelude](HOST_ENVIRONMENTS.md).
+
 ## Prerequisites
 
 Install Clang, LLD, QEMU System x86, OVMF, mtools, and core build tools. On Debian or Ubuntu hosts, the package names are `clang`, `lld`, `qemu-system-x86`, `ovmf`, `mtools`, `dosfstools`, and `make`.
@@ -32,6 +34,14 @@ make check-uefi
 ```
 
 The verification profile starts OVMF in QEMU, boots the independent Prelude UEFI application, and checks the debug marker emitted after firmware console access succeeds.
+
+## Smoke tests
+
+```text
+make test
+```
+
+In addition to the QEMU boot probe, this validates the generated PE/COFF application type and confirms that the ESP contains `EFI/BOOT/BOOTX64.EFI`.
 
 ## Expected result
 

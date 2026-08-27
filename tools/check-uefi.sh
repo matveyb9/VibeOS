@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VibeOS Project Foundation — automated QEMU verification for Prelude UEFI.
+# VibeOS Project Foundation — portable automated QEMU verification for Prelude UEFI.
 set -euo pipefail
 
 if [[ $# -ne 1 ]]; then
@@ -9,10 +9,25 @@ fi
 
 esp_image=$1
 build_dir=$(dirname "$esp_image")
+qemu_x86_64=${QEMU_X86_64:-qemu-system-x86_64}
 ovmf_code=${OVMF_CODE:-/usr/share/OVMF/OVMF_CODE_4M.fd}
 ovmf_vars_source=${OVMF_VARS:-/usr/share/OVMF/OVMF_VARS_4M.fd}
 ovmf_vars="$build_dir/OVMF_VARS_4M.fd"
 debug_log="$build_dir/prelude-qemu.log"
+
+if command -v timeout >/dev/null 2>&1; then
+    timeout_command=(timeout 20s)
+elif command -v gtimeout >/dev/null 2>&1; then
+    timeout_command=(gtimeout 20s)
+else
+    echo "A timeout utility is required: install GNU coreutils or provide timeout/gtimeout." >&2
+    exit 69
+fi
+
+if ! command -v "$qemu_x86_64" >/dev/null 2>&1; then
+    echo "missing QEMU executable: $qemu_x86_64" >&2
+    exit 69
+fi
 
 for required_file in "$esp_image" "$ovmf_code" "$ovmf_vars_source"; do
     if [[ ! -f "$required_file" ]]; then
@@ -25,7 +40,7 @@ cp "$ovmf_vars_source" "$ovmf_vars"
 rm -f "$debug_log"
 
 set +e
-timeout 20s qemu-system-x86_64 \
+"${timeout_command[@]}" "$qemu_x86_64" \
     -machine q35 -m 256M -no-reboot -display none \
     -drive if=pflash,format=raw,unit=0,readonly=on,file="$ovmf_code" \
     -drive if=pflash,format=raw,unit=1,file="$ovmf_vars" \

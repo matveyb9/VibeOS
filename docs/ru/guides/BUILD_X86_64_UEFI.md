@@ -13,6 +13,8 @@
 **Путь загрузки:** UEFI.
 **Поддержка:** Первый обязательный профиль проверки.
 
+Настройка host-систем Linux, macOS и Windows описана в руководстве [«Host-системы для Prelude»](HOST_ENVIRONMENTS.md).
+
 ## Предварительные требования
 
 Установите Clang, LLD, QEMU System x86, OVMF, mtools и основные инструменты сборки. На Debian или Ubuntu используются пакеты `clang`, `lld`, `qemu-system-x86`, `ovmf`, `mtools`, `dosfstools` и `make`.
@@ -32,6 +34,14 @@ make check-uefi
 ```
 
 Профиль проверки запускает OVMF в QEMU, загружает независимое UEFI-приложение Prelude и проверяет диагностическую метку, которая выводится после успешного доступа к firmware console.
+
+## Smoke-тесты
+
+```text
+make test
+```
+
+Помимо QEMU boot-probe, команда проверяет тип созданного PE/COFF-приложения и подтверждает, что в ESP находится `EFI/BOOT/BOOTX64.EFI`.
 
 ## Ожидаемый результат
 

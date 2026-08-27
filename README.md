@@ -41,6 +41,7 @@ Read the [simplified roadmap](docs/en/ROADMAP.md) for the full sequence and its 
 - Review the [documentation policy](docs/en/DOCUMENTATION.md).
 - Read the [contribution and workflow guide](docs/en/CONTRIBUTING.md).
 - Build the first [x86_64 UEFI Prelude image](docs/en/guides/BUILD_X86_64_UEFI.md).
+- Configure a supported [Prelude host environment](docs/en/guides/HOST_ENVIRONMENTS.md).
 - See the planned [application platform and Vibe SDK](docs/en/SDK.md).
 - Track the [roadmap](docs/en/ROADMAP.md).
 
