@@ -19,6 +19,7 @@
 #include <parcel.h>
 #include <prism.h>
 #include <horizon.h>
+#include <horizon_input.h>
 #include <atlas_input.h>
 #include <atlas_pci.h>
 
@@ -74,7 +75,8 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
     if (pulse_context_is_valid(context) && pulse_memory_initialize(context) &&
         pulse_memory_take_frame(&first_frame) && pulse_memory_take_frame(&second_frame) &&
         second_frame == first_frame + 4096U && pulse_paging_initialize() &&
-        pulse_interrupts_initialize() && prism_canvas_runtime_probe(context) && horizon_runtime_probe() && origin_runtime_probe() && vaultfs_runtime_probe() &&
+        pulse_interrupts_initialize() && prism_canvas_runtime_probe(context) && horizon_runtime_probe() &&
+        horizon_input_runtime_probe() && origin_runtime_probe() && vaultfs_runtime_probe() &&
         vibe_session_runtime_probe() && parcel_runtime_probe() && atlas_keyboard_runtime_probe() && atlas_pci_runtime_probe()) {
         pulse_debug_write("ORIGIN: delegated key verified\n");
         pulse_debug_write("VAULT: redundant superblock recovered\n");
@@ -86,6 +88,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         pulse_debug_write("CANVAS: retained scene rendered\n");
         pulse_debug_write("HORIZON: desktop scene rendered\n");
         pulse_debug_write("HORIZON: desktop focus model verified\n");
+        pulse_debug_write("HORIZON: keyboard focus adapter verified\n");
         pulse_debug_write("ATLAS: keyboard event queue verified\n");
         pulse_debug_write("ATLAS: PCI inventory verified\n");
         pulse_debug_write("ATLAS: PCI resource inventory verified\n");

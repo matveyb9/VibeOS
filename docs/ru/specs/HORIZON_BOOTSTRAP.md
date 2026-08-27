@@ -17,8 +17,10 @@
 | Dock | Нижняя accent band шириной три четверти display |
 | Focus model | Отдельный state object хранит до восьми logical window, explicit focus и optional selection |
 | Action | Deterministic action next, previous и select-focused; focus циклически переходит в пределах bounded window count |
-| Interaction | Model пока не связана с Atlas keyboard или pointer event; selection ничего не запускает |
+| Input adapter | Отдельный stateless Horizon–Atlas adapter принимает normalized key event; он не владеет hardware queue или rendering state |
+| Начальная key policy | Pressed `N` выбирает next focus, pressed `P` — previous focus, pressed Space выбирает focused logical window; release и unmapped key игнорируются |
+| Interaction | Adapter пока не связан с live keyboard drain loop или pointer event; selection ничего не запускает |
 
-`horizon_build_desktop_scene_for_state` принимает valid focus state из трёх window и размещает retained indicator у focused card; исходный bootstrap builder по-прежнему создаёт deterministic initial state. Host-тесты проверяют state bound, wraparound navigation, selection, scene geometry и rendering order. UEFI и Legacy BIOS QEMU path проверяют isolated focus self-check до timer proof.
+`horizon_build_desktop_scene_for_state` принимает valid focus state из трёх window и размещает retained indicator у focused card; исходный bootstrap builder по-прежнему создаёт deterministic initial state. Horizon input adapter — преднамеренная cross-subsystem boundary: он принимает уже normalized `ATLAS_KEY_EVENT`, отображает только recognised press event на существующий focus action и сообщает, был ли event обработан. Host-тесты проверяют state bound, wraparound navigation, selection, adapter mapping, scene geometry и rendering order. UEFI и Legacy BIOS QEMU path проверяют isolated focus и input-adapter self-check до timer proof.
 
-> Focus model не является event loop, window manager, process launcher или permission mechanism. Будущая работа Horizon свяжет Atlas keyboard/pointer input, использует Keys для window ownership, направит launch через Parcel и интегрирует настоящие приложения из project architecture.
+> Focus model и input adapter не являются live event loop, window manager, process launcher или permission mechanism. Будущая работа Horizon будет извлекать events из Atlas keyboard/pointer queue, использовать Keys для window ownership, направлять launch через Parcel и интегрировать настоящие приложения из project architecture.
