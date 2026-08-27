@@ -50,7 +50,7 @@ set +e
 qemu_status=$?
 set -e
 
-if ! grep -Fqx "PULSE: early memory bootstrap ready" "$debug_log"; then
+if ! grep -Fqx "PULSE: identity paging ready" "$debug_log"; then
     echo "Prelude UEFI verification marker was not observed." >&2
     [[ -f "$debug_log" ]] && cat "$debug_log" >&2
     exit 1

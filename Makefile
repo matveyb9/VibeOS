@@ -13,9 +13,11 @@ PRELUDE_EFI := $(BUILD_DIR)/prelude/BOOTX64.EFI
 PULSE_ENTRY_OBJ := $(BUILD_DIR)/pulse/entry.obj
 PULSE_MAIN_OBJ := $(BUILD_DIR)/pulse/main.obj
 PULSE_MEMORY_OBJ := $(BUILD_DIR)/pulse/memory/early.obj
+PULSE_PAGING_OBJ := $(BUILD_DIR)/pulse/memory/paging-x86_64.obj
 PULSE_ELF := $(BUILD_DIR)/pulse/PULSE.ELF
 PULSE_BIN := $(BUILD_DIR)/pulse/pulse.bin
 PULSE_MEMORY_TEST := $(BUILD_DIR)/tests/pulse-memory-bootstrap
+PULSE_PAGING_TEST := $(BUILD_DIR)/tests/pulse-paging-bootstrap
 ESP_IMAGE := $(BUILD_DIR)/vibeos-uefi-esp.img
 ESP_IMAGE_BYTES := 67108864
 
@@ -55,10 +57,14 @@ $(PULSE_MEMORY_OBJ): $(PULSE_DIR)/memory/early.c $(PULSE_DIR)/include/memory.h s
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
-$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_DIR)/linker/x86_64.ld
+$(PULSE_PAGING_OBJ): $(PULSE_DIR)/memory/paging-x86_64.c $(PULSE_DIR)/include/paging.h $(PULSE_DIR)/include/memory.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
+$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_DIR)/linker/x86_64.ld
 	@mkdir -p $(dir $@)
 	$(LLD_LD) -m elf_x86_64 -nostdlib --build-id=none -T $(PULSE_DIR)/linker/x86_64.ld \
-		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ)
+		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ)
 
 $(PULSE_BIN): $(PULSE_ELF)
 	$(LLVM_OBJCOPY) -O binary $< $@
@@ -67,6 +73,11 @@ $(PULSE_MEMORY_TEST): tests/kernel/pulse_memory_bootstrap.c $(PULSE_DIR)/memory/
 	@mkdir -p $(dir $@)
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include -Isrc/platform/dawn/include \
 		tests/kernel/pulse_memory_bootstrap.c $(PULSE_DIR)/memory/early.c -o $@
+
+$(PULSE_PAGING_TEST): tests/kernel/pulse_paging_bootstrap.c $(PULSE_DIR)/memory/paging-x86_64.c $(PULSE_DIR)/memory/early.c $(PULSE_DIR)/include/paging.h
+	@mkdir -p $(dir $@)
+	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include -Isrc/platform/dawn/include \
+		tests/kernel/pulse_paging_bootstrap.c $(PULSE_DIR)/memory/paging-x86_64.c $(PULSE_DIR)/memory/early.c -o $@
 
 $(PRELUDE_OBJ): $(PRELUDE_DIR)/main.c $(PRELUDE_DIR)/include/uefi.h src/platform/dawn/include/dawn.h
 	@mkdir -p $(dir $@)
@@ -92,8 +103,9 @@ $(ESP_IMAGE): $(PRELUDE_EFI)
 check-uefi: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE)
 
-test: check-uefi $(PULSE_MEMORY_TEST)
+test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST)
 	$(PULSE_MEMORY_TEST)
+	$(PULSE_PAGING_TEST)
 	tests/boot/check-prelude-artifact.sh $(ESP_IMAGE) $(PRELUDE_EFI) $(PULSE_ELF)
 
 clean:

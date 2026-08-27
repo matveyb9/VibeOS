@@ -7,6 +7,7 @@
  */
 
 #include "memory.h"
+#include "paging.h"
 
 static void pulse_debug_putc(char character) {
     __asm__ volatile("outb %0, %w1" : : "a"(character), "d"((uint16_t)0x402));
@@ -37,10 +38,10 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
 
     if (pulse_context_is_valid(context) && pulse_memory_initialize(context) &&
         pulse_memory_take_frame(&first_frame) && pulse_memory_take_frame(&second_frame) &&
-        second_frame == first_frame + 4096U) {
-        pulse_debug_write("PULSE: early memory bootstrap ready\n");
+        second_frame == first_frame + 4096U && pulse_paging_initialize()) {
+        pulse_debug_write("PULSE: identity paging ready\n");
     } else {
-        pulse_debug_write("PULSE: early memory bootstrap failed\n");
+        pulse_debug_write("PULSE: early paging bootstrap failed\n");
     }
 
     pulse_debug_exit();
