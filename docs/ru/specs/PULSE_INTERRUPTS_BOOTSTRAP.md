@@ -14,6 +14,8 @@ Maskable interrupts остаются выключенными. После заг
 
 У Pulse также есть отдельная pure controller-selection policy. Она потребляет только уже проверенные bounded MADT metadata: PIC остаётся активным bootstrap controller, а наличие хотя бы одной записи Local APIC и одной I/O APIC отмечает только eligibility будущего APIC handoff. Когда есть enabled Local APIC record, nonzero local-controller address из MADT и nonzero I/O APIC address, policy может сформировать immutable handoff plan с этими validated identifier и first I/O APIC GSI base. Policy не выполняет port I/O, не меняет PIC mask и никогда не map или не программирует APIC.
 
+Та же policy может разрешить legacy ISA IRQ в GSI как metadata. Единственная bus-0 MADT Interrupt Source Override поставляет GSI и flags; иначе legacy IRQ number является deterministic fallback GSI. Duplicate matching override отклоняются. Это не меняет PIC routing, I/O APIC redirection entry, mask, vector или interrupt delivery.
+
 ## Текущие ограничения
 
 В bootstrap пока нет register-frame capture, normalisation error code, return path, IST stack, PIC/APIC routing, timer tick и recovery UI. Default handler намеренно является terminal. APIC eligibility не является APIC enablement, interrupt rerouting, processor startup или SMP support. Эти возможности будут добавлены до того, как Pulse включит external interrupts или scheduling work.

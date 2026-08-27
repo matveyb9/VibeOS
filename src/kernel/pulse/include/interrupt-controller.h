@@ -30,5 +30,10 @@ int pulse_x86_apic_handoff_plan_build(
     const DAWN_ACPI_MADT_X86_INVENTORY *x86_madt,
     PULSE_X86_APIC_HANDOFF_PLAN *plan);
 int pulse_x86_apic_handoff_plan_is_ready(const PULSE_X86_APIC_HANDOFF_PLAN *plan);
+int pulse_x86_legacy_irq_resolve_gsi(
+    const DAWN_ACPI_MADT_X86_INVENTORY *madt,
+    uint8_t legacy_irq,
+    uint32_t *global_system_interrupt,
+    uint16_t *flags);
 
 #endif
