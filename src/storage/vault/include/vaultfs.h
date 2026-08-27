@@ -141,6 +141,12 @@ int vaultfs_root_update_journal_store_committed(
     uint64_t journal_block,
     const VAULTFS_SUPERBLOCK *superblock,
     const VAULTFS_ROOT_UPDATE_PLAN *plan);
+int vaultfs_root_update_superblock_store(
+    ATLAS_RAM_BLOCK_DEVICE *device,
+    uint64_t journal_block,
+    uint64_t superblock_block,
+    const VAULTFS_SUPERBLOCK *superblock,
+    const VAULTFS_ROOT_UPDATE_PLAN *plan);
 int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot);
 int vaultfs_system_slot_confirm(VAULTFS_SUPERBLOCK *superblock);
 int vaultfs_system_slot_recover(const VAULTFS_SUPERBLOCK *superblock, uint64_t *boot_slot);

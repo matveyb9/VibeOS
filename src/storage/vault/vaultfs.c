@@ -482,6 +482,46 @@ int vaultfs_root_update_journal_store_committed(
     return vaultfs_journal_store(device, journal_block, &journal);
 }
 
+int vaultfs_root_update_superblock_store(
+    ATLAS_RAM_BLOCK_DEVICE *device,
+    uint64_t journal_block,
+    uint64_t superblock_block,
+    const VAULTFS_SUPERBLOCK *superblock,
+    const VAULTFS_ROOT_UPDATE_PLAN *plan) {
+    VAULTFS_JOURNAL_ENTRY journal;
+    VAULTFS_ROOT_DIRECTORY_BLOCK root_block;
+    VAULTFS_SUPERBLOCK successor;
+    uint8_t bytes[VAULTFS_ROOT_DIRECTORY_WIRE_BYTES];
+
+    if (device == (void *)0 || plan == (const void *)0 || plan->transaction_id == 0U ||
+        !vaultfs_superblock_valid(superblock) || superblock->generation == UINT64_MAX ||
+        superblock->journal_sequence == UINT64_MAX ||
+        journal_block == superblock->root_directory_block ||
+        journal_block == superblock->backup_root_directory_block ||
+        superblock_block == journal_block || superblock_block == superblock->root_directory_block ||
+        superblock_block == superblock->backup_root_directory_block ||
+        plan->target_root_block != superblock->backup_root_directory_block ||
+        plan->next_generation != superblock->generation + UINT64_C(1) ||
+        !vaultfs_journal_load(device, journal_block, &journal) ||
+        journal.state != VAULTFS_JOURNAL_COMMITTED || journal.transaction_id != plan->transaction_id ||
+        journal.target_block != plan->target_root_block ||
+        journal.payload_checksum != plan->payload_checksum ||
+        !atlas_block_read(device, plan->target_root_block, bytes, sizeof(bytes))) {
+        return 0;
+    }
+    vaultfs_root_directory_decode(&root_block, bytes);
+    if (!vaultfs_root_directory_block_valid(&root_block) ||
+        root_block.generation != plan->next_generation || root_block.checksum != plan->payload_checksum) {
+        return 0;
+    }
+    vaultfs_superblock_initialize(&successor, plan->next_generation, superblock->active_system_slot,
+                                  superblock->root_directory_block, superblock->backup_root_directory_block,
+                                  superblock->journal_sequence + UINT64_C(1));
+    successor.pending_system_slot = superblock->pending_system_slot;
+    vaultfs_superblock_seal(&successor);
+    return vaultfs_superblock_store(device, superblock_block, &successor);
+}
+
 int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot) {
     if (!vaultfs_superblock_valid(superblock) || !vaultfs_system_slot_valid(target_slot) ||
         target_slot == superblock->active_system_slot) {

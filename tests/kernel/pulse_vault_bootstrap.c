@@ -86,6 +86,7 @@ int main(void) {
     if (!expect(vaultfs_superblock_valid(&primary) && primary.root_directory_block == UINT64_C(2),
                     "primary stores sealed root-directory block metadata") ||
         !expect(vaultfs_superblock_store(&device, 0U, &primary), "primary stores") ||
+        !expect(vaultfs_superblock_store(&device, 1U, &primary), "redundant current superblock stores") ||
         !expect(atlas_block_read(&device, 0U, superblock_wire, sizeof(superblock_wire)) &&
                     superblock_wire[0] == 0x31U && superblock_wire[1] == 0x53U &&
                     superblock_wire[8] == VAULTFS_FORMAT_VERSION && superblock_wire[12] == 0U &&
@@ -145,7 +146,15 @@ int main(void) {
         return 1;
     }
 
-    if (!expect(vaultfs_superblock_store(&device, 1U, &backup), "backup stores") ||
+    if (!expect(!vaultfs_root_update_superblock_store(
+                    &device, UINT64_C(4), primary.root_directory_block, &primary, &update_plan),
+                    "promotion rejects a superblock location overlapping a root snapshot") ||
+        !expect(vaultfs_root_update_superblock_store(&device, UINT64_C(4), 0U, &primary, &update_plan) &&
+                    vaultfs_superblock_load_latest(&device, 0U, 1U, &selected) &&
+                    selected.generation == UINT64_C(8) && selected.journal_sequence == UINT64_C(71),
+                    "first promoted redundant superblock exposes next root generation") ||
+        !expect(vaultfs_root_update_superblock_store(&device, UINT64_C(4), 1U, &primary, &update_plan),
+                    "second promoted redundant superblock stores independently") ||
         !expect(vaultfs_root_directory_block_load_dual(&device, &backup, &loaded_root_block) &&
                     loaded_root_block.generation == UINT64_C(8) && loaded_root_block.entry_count == 1U &&
                     loaded_root_block.entries[0].object_id == UINT64_C(17),
@@ -169,8 +178,8 @@ int main(void) {
     backup.checksum ^= UINT64_C(1);
     if (!expect(atlas_block_write(&device, 1U, &backup, sizeof(backup)), "corrupted backup writes") ||
         !expect(vaultfs_superblock_load_latest(&device, 0U, 1U, &selected) &&
-                    selected.generation == UINT64_C(7),
-                    "valid primary recovers from bad backup") ||
+                    selected.generation == UINT64_C(8),
+                    "first promoted superblock recovers from bad second copy") ||
         !expect(vaultfs_runtime_probe(), "runtime probe recovers from bad primary")) {
         return 1;
     }
