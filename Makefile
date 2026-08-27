@@ -21,6 +21,9 @@ PULSE_INTERRUPTS_OBJ := $(BUILD_DIR)/pulse/interrupts/idt-x86_64.obj
 PULSE_SCHEDULER_OBJ := $(BUILD_DIR)/pulse/schedule/round-robin.obj
 PULSE_CONTEXT_OBJ := $(BUILD_DIR)/pulse/schedule/context.obj
 PULSE_TIMER_OBJ := $(BUILD_DIR)/pulse/time/pit-x86_64.obj
+PULSE_KEYS_OBJ := $(BUILD_DIR)/security/keys/key-space.obj
+PULSE_RELAY_OBJ := $(BUILD_DIR)/ipc/relay/link.obj
+PULSE_ORIGIN_OBJ := $(BUILD_DIR)/runtime/origin/origin.obj
 PULSE_PANIC_OBJ := $(BUILD_DIR)/pulse/debug/panic.obj
 PULSE_ELF := $(BUILD_DIR)/pulse/PULSE.ELF
 PULSE_BIN := $(BUILD_DIR)/pulse/pulse.bin
@@ -30,6 +33,7 @@ PULSE_INTERRUPTS_TEST := $(BUILD_DIR)/tests/pulse-interrupts-bootstrap
 PULSE_SCHEDULER_TEST := $(BUILD_DIR)/tests/pulse-scheduler-bootstrap
 PULSE_CONTEXT_TEST := $(BUILD_DIR)/tests/pulse-context-bootstrap
 PULSE_TIMER_TEST := $(BUILD_DIR)/tests/pulse-timer-bootstrap
+PULSE_RELAY_TEST := $(BUILD_DIR)/tests/pulse-relay-bootstrap
 ESP_IMAGE := $(BUILD_DIR)/vibeos-uefi-esp.img
 ESP_IMAGE_BYTES := 67108864
 
@@ -44,7 +48,8 @@ PRELUDE_CFLAGS := --target=x86_64-pc-windows-msvc -std=c17 -ffreestanding -fshor
 	-I$(PRELUDE_DIR)/include -Isrc/platform/dawn/include
 PULSE_CFLAGS := --target=x86_64-unknown-elf -std=c17 -ffreestanding -fno-stack-protector \
 	-fno-pic -fno-pie -mno-red-zone -Wall -Wextra -Wpedantic -Werror \
-	-DPULSE_PROBE_$(PULSE_PROBE) -Isrc/platform/dawn/include -I$(PULSE_DIR)/include
+	-DPULSE_PROBE_$(PULSE_PROBE) -Isrc/platform/dawn/include -I$(PULSE_DIR)/include \
+	-Isrc/security/keys/include -Isrc/ipc/relay/include -Isrc/runtime/origin/include
 PULSE_ASFLAGS := --target=x86_64-unknown-elf -ffreestanding -mno-red-zone
 
 .PHONY: all prelude pulse uefi-image check-uefi check-panic test test-panic clean
@@ -97,14 +102,26 @@ $(PULSE_TIMER_OBJ): $(PULSE_DIR)/time/pit-x86_64.c $(PULSE_DIR)/include/timer.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
+$(PULSE_KEYS_OBJ): src/security/keys/key-space.c src/security/keys/include/keys.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
+$(PULSE_RELAY_OBJ): src/ipc/relay/link.c src/ipc/relay/include/relay.h src/security/keys/include/keys.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
+$(PULSE_ORIGIN_OBJ): src/runtime/origin/origin.c src/runtime/origin/include/origin.h src/ipc/relay/include/relay.h src/security/keys/include/keys.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
 $(PULSE_PANIC_OBJ): $(PULSE_DIR)/debug/panic.c $(PULSE_DIR)/include/panic.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
-$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
+$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
 	@mkdir -p $(dir $@)
 	$(LLD_LD) -m elf_x86_64 -nostdlib --build-id=none -T $(PULSE_DIR)/linker/x86_64.ld \
-		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PANIC_OBJ)
+		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_PANIC_OBJ)
 
 $(PULSE_BIN): $(PULSE_ELF)
 	$(LLVM_OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $< $@
@@ -139,6 +156,11 @@ $(PULSE_TIMER_TEST): tests/kernel/pulse_timer_bootstrap.c $(PULSE_DIR)/time/pit-
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include \
 		tests/kernel/pulse_timer_bootstrap.c $(PULSE_DIR)/time/pit-x86_64.c -o $@
 
+$(PULSE_RELAY_TEST): tests/kernel/pulse_relay_bootstrap.c src/security/keys/key-space.c src/ipc/relay/link.c src/runtime/origin/origin.c
+	@mkdir -p $(dir $@)
+	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/security/keys/include -Isrc/ipc/relay/include -Isrc/runtime/origin/include \
+		tests/kernel/pulse_relay_bootstrap.c src/security/keys/key-space.c src/ipc/relay/link.c src/runtime/origin/origin.c -o $@
+
 $(PRELUDE_OBJ): $(PRELUDE_DIR)/main.c $(PRELUDE_DIR)/include/uefi.h src/platform/dawn/include/dawn.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PRELUDE_CFLAGS) -c $< -o $@
@@ -161,18 +183,19 @@ $(ESP_IMAGE): $(PRELUDE_EFI)
 	mcopy -i $@ $(PRELUDE_EFI) ::/EFI/BOOT/BOOTX64.EFI
 
 check-uefi: $(ESP_IMAGE)
-	tools/check-uefi.sh $(ESP_IMAGE) "PULSE: task context verified" "PULSE: timer interrupt handled"
+	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
 
 check-panic: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE) "PULSE PANIC: unhandled interrupt"
 
-test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TEST) $(PULSE_SCHEDULER_TEST) $(PULSE_CONTEXT_TEST) $(PULSE_TIMER_TEST)
+test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TEST) $(PULSE_SCHEDULER_TEST) $(PULSE_CONTEXT_TEST) $(PULSE_TIMER_TEST) $(PULSE_RELAY_TEST)
 	$(PULSE_MEMORY_TEST)
 	$(PULSE_PAGING_TEST)
 	$(PULSE_INTERRUPTS_TEST)
 	$(PULSE_SCHEDULER_TEST)
 	$(PULSE_CONTEXT_TEST)
 	$(PULSE_TIMER_TEST)
+	$(PULSE_RELAY_TEST)
 	$(MAKE) BUILD_DIR=build-panic PULSE_PROBE=panic check-panic
 	tests/boot/check-prelude-artifact.sh $(ESP_IMAGE) $(PRELUDE_EFI) $(PULSE_ELF)
 
