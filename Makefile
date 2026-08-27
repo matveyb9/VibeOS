@@ -299,10 +299,10 @@ $(PULSE_HORIZON_FOCUS_TEST): tests/apps/horizon_focus.c src/apps/horizon/focus.c
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/platform/dawn/include -Isrc/ui/prism/include -Isrc/ui/canvas/include -Isrc/apps/horizon/include \
 	tests/apps/horizon_focus.c src/apps/horizon/focus.c -o $@
 
-$(PULSE_HORIZON_INPUT_TEST): tests/apps/horizon_input.c src/apps/horizon/input.c src/apps/horizon/focus.c
+$(PULSE_HORIZON_INPUT_TEST): tests/apps/horizon_input.c src/apps/horizon/input.c src/apps/horizon/focus.c src/drivers/atlas/i8042-keyboard.c
 	@mkdir -p $(dir $@)
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/platform/dawn/include -Isrc/ui/prism/include -Isrc/ui/canvas/include -Isrc/drivers/atlas/include -Isrc/apps/horizon/include \
-		tests/apps/horizon_input.c src/apps/horizon/input.c src/apps/horizon/focus.c -o $@
+		tests/apps/horizon_input.c src/apps/horizon/input.c src/apps/horizon/focus.c src/drivers/atlas/i8042-keyboard.c -o $@
 
 $(PULSE_KEYBOARD_TEST): tests/kernel/pulse_keyboard_bootstrap.c src/drivers/atlas/i8042-keyboard.c
 	@mkdir -p $(dir $@)
