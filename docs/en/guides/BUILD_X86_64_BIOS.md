@@ -6,7 +6,7 @@
 
 **Status:** Implemented for the reproducible QEMU/SeaBIOS profile. This is a self-owned Prelude path; it does not use Multiboot, GRUB, or another bootloader.
 
-The Legacy BIOS path produces `build/vibeos-bios.img`. Its 512-byte first stage loads the separate Prelude stage two. Stage two loads the raw Pulse image, normalizes the BIOS E820 map into Dawn v3 descriptors, requests the VBE 2.0 linear `1024×768×24` mode (`0x118`), enables x86_64 long mode, and transfers the same Dawn Context contract to Pulse that UEFI Prelude produces.[1] [2]
+The Legacy BIOS path produces `build/vibeos-bios.img`. Its 512-byte first stage loads the separate Prelude stage two. Stage two loads the raw Pulse image through repeated 64-sector INT 13h extension reads, normalizes the BIOS E820 map into Dawn v4 descriptors, requests the VBE 2.0 linear `1024×768×24` mode (`0x118`), enables x86_64 long mode, and transfers the same Dawn Context contract to Pulse that UEFI Prelude produces.[1] [2]
 
 ## Requirements
 
@@ -26,6 +26,12 @@ make check-bios
 ```
 
 `make check-bios` starts the image on QEMU's PC machine, waits for Prelude's `Dawn Context` marker, then confirms that the common Pulse timer path executes. `make test` includes this check as well as the UEFI, keyboard, panic, artifact, and host unit checks.
+
+## Payload staging boundary
+
+Stage two stages Pulse at physical `0x10000` and moves it to its execution address after entering long mode. Each INT 13h extension request reads at most 64 sectors, then advances both the disk LBA and the destination segment. This QEMU profile therefore tests multiple reads whenever the raw Pulse image exceeds 64 sectors; the current checked image does so.
+
+The build rejects a raw Pulse image larger than **512 KiB**, the current staging range `0x10000` through `0x8ffff`. This is a deliberate, checked bootstrap limit rather than a one-request disk-transfer cap. A future installation-capable loader will replace this fixed staging scheme with a disk format and loader layout that scale beyond it.
 
 ## Scope and safety
 

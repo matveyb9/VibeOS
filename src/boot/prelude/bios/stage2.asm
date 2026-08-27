@@ -1,9 +1,10 @@
 ; VibeOS Prelude — Legacy BIOS stage two for the reproducible QEMU/SeaBIOS path.
-; It owns E820, VBE 2.0 LFB selection, long-mode transition, and Dawn v3 handoff.
+; It owns E820, VBE 2.0 LFB selection, long-mode transition, and Dawn v4 handoff.
 [bits 16]
 [org 0x8000]
 
 %define PULSE_TEMP_ADDRESS 0x10000
+%define PULSE_TEMP_CAPACITY_BYTES 0x80000
 %define PULSE_LOAD_ADDRESS 0x200000
 %define DAWN_CONTEXT_ADDRESS 0x7000
 %define DAWN_MEMORY_MAP_ADDRESS 0x5000
@@ -19,6 +20,11 @@
 %define DAWN_MEMORY_USABLE 1
 %define DAWN_PIXEL_FORMAT_BGR888 3
 %define DAWN_MEMORY_MAP_MAX_ENTRIES 32
+%define PULSE_READ_CHUNK_SECTORS 64
+
+%if PULSE_BYTES > PULSE_TEMP_CAPACITY_BYTES
+    %error "Pulse payload exceeds Legacy BIOS staging capacity"
+%endif
 
     cli
     cld
@@ -55,10 +61,40 @@ enable_a20:
     ret
 
 load_pulse:
+    mov word [pulse_sectors_remaining], PULSE_SECTORS
+.next_chunk:
+    cmp word [pulse_sectors_remaining], 0
+    je .success
+    mov ax, [pulse_sectors_remaining]
+    cmp ax, PULSE_READ_CHUNK_SECTORS
+    jbe .chunk_size_ready
+    mov ax, PULSE_READ_CHUNK_SECTORS
+.chunk_size_ready:
+    mov [pulse_chunk_sectors], ax
+    mov [disk_address_packet + 2], ax
     mov ah, 0x42
     mov dl, [boot_drive]
     mov si, disk_address_packet
+    push ds
+    push es
     int 0x13
+    pop es
+    pop ds
+    jc .failure
+
+    mov ax, [pulse_chunk_sectors]
+    sub word [pulse_sectors_remaining], ax
+    movzx eax, ax
+    add dword [disk_address_packet + 8], eax
+    adc dword [disk_address_packet + 12], 0
+    shl ax, 5
+    add word [disk_address_packet + 6], ax
+    jmp .next_chunk
+.success:
+    clc
+    ret
+.failure:
+    stc
     ret
 
 capture_e820:
@@ -315,6 +351,8 @@ long_mode:
 [bits 16]
 boot_drive: db 0
 memory_entry_count: dw 0
+pulse_sectors_remaining: dw 0
+pulse_chunk_sectors: dw 0
 failure_message: db "PRELUDE BIOS: boot handoff failed", 10, 0
 dawn_sealed_message: db "PRELUDE BIOS: Dawn Context sealed", 10, 0
 vbe_info_failure_message: db "PRELUDE BIOS: VBE mode info failed", 10, 0
@@ -325,7 +363,7 @@ vbe_set_failure_message: db "PRELUDE BIOS: VBE mode set failed", 10, 0
 
 disk_address_packet:
     db 16, 0
-    dw PULSE_SECTORS
+    dw 0
     dw 0x0000
     dw 0x1000
     dq (1 + STAGE2_SECTORS)

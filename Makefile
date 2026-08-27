@@ -60,7 +60,7 @@ BIOS_STAGE2_BIN := $(BUILD_DIR)/prelude/bios/stage2.bin
 BIOS_IMAGE := $(BUILD_DIR)/vibeos-bios.img
 ESP_IMAGE_BYTES := 67108864
 PRELUDE_BIOS_STAGE2_SECTORS := 16
-PRELUDE_BIOS_PULSE_MAX_BYTES := 57344
+PRELUDE_BIOS_PULSE_STAGING_BYTES := 524288
 
 CLANG ?= clang
 LLD_LINK ?= lld-link
@@ -302,8 +302,8 @@ $(BIOS_STAGE1_BIN): $(PRELUDE_BIOS_DIR)/stage1.asm
 $(BIOS_STAGE2_BIN): $(PRELUDE_BIOS_DIR)/stage2.asm $(PULSE_BIN) src/platform/dawn/include/dawn.h
 	@mkdir -p $(dir $@)
 	@pulse_bytes=$$(wc -c < $(PULSE_BIN)); \
-	if (( pulse_bytes > $(PRELUDE_BIOS_PULSE_MAX_BYTES) )); then \
-		echo "Pulse raw image exceeds Legacy BIOS staging capacity: $$pulse_bytes > $(PRELUDE_BIOS_PULSE_MAX_BYTES)" >&2; exit 1; \
+	if (( pulse_bytes > $(PRELUDE_BIOS_PULSE_STAGING_BYTES) )); then \
+		echo "Pulse raw image exceeds Legacy BIOS staging capacity: $$pulse_bytes > $(PRELUDE_BIOS_PULSE_STAGING_BYTES)" >&2; exit 1; \
 	fi; \
 	pulse_sectors=$$(( (pulse_bytes + 511) / 512 )); \
 	$(NASM) -f bin -DSTAGE2_SECTORS=$(PRELUDE_BIOS_STAGE2_SECTORS) -DPULSE_BYTES=$$pulse_bytes -DPULSE_SECTORS=$$pulse_sectors $< -o $@

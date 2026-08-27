@@ -6,7 +6,7 @@
 
 **Статус:** Реализовано для воспроизводимого профиля QEMU/SeaBIOS. Это собственный путь Prelude; он не использует Multiboot, GRUB или другой bootloader.
 
-Legacy BIOS path создаёт `build/vibeos-bios.img`. Его 512-byte first stage загружает отдельный Prelude stage two. Stage two загружает raw Pulse image, нормализует BIOS E820 map в Dawn v3 descriptor, запрашивает VBE 2.0 linear mode `1024×768×24` (`0x118`), включает x86_64 long mode и передаёт Pulse тот же Dawn Context contract, который формирует UEFI Prelude.[1] [2]
+Legacy BIOS path создаёт `build/vibeos-bios.img`. Его 512-byte first stage загружает отдельный Prelude stage two. Stage two загружает raw Pulse image через повторные 64-sector INT 13h extension read, нормализует BIOS E820 map в Dawn v4 descriptor, запрашивает VBE 2.0 linear mode `1024×768×24` (`0x118`), включает x86_64 long mode и передаёт Pulse тот же Dawn Context contract, который формирует UEFI Prelude.[1] [2]
 
 ## Требования
 
@@ -26,6 +26,12 @@ make check-bios
 ```
 
 `make check-bios` запускает image на QEMU PC machine, ожидает marker Prelude `Dawn Context`, затем подтверждает выполнение общего Pulse timer path. `make test` включает эту проверку вместе с UEFI, keyboard, panic, artifact и host unit check.
+
+## Граница staging payload
+
+Stage two размещает Pulse во временной physical области `0x10000` и переносит его по execution address после входа в long mode. Каждый INT 13h extension request читает не более 64 sector, затем сдвигает и disk LBA, и destination segment. Поэтому QEMU profile проверяет несколько чтений, когда raw Pulse image превышает 64 sector; текущий проверяемый image это делает.
+
+Сборка отклоняет raw Pulse image больше **512 KiB** — текущей staging области от `0x10000` до `0x8ffff`. Это намеренно проверяемая bootstrap-граница, а не лимит одного disk-transfer request. В будущем loader, способный выполнять установку, заменит этот fixed staging scheme disk format и loader layout, которые масштабируются дальше.
 
 ## Границы и безопасность
 
