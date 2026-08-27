@@ -6,11 +6,15 @@
 #include <stdint.h>
 #include <dawn.h>
 
+#define PULSE_MEMORY_MAX_REGIONS UINT32_C(32)
+
 typedef struct {
     uint64_t selected_region_base;
     uint64_t selected_region_limit;
     uint64_t next_free_frame;
     uint64_t usable_page_count;
+    uint32_t region_count;
+    uint32_t active_region_index;
 } PULSE_MEMORY_STATE;
 
 int pulse_memory_initialize(const DAWN_CONTEXT *context);
