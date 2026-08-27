@@ -105,25 +105,7 @@ int main(void) {
                     "prepared journal authorizes alternate next root snapshot store") ||
         !expect(vaultfs_root_directory_block_load_dual(&device, &primary, &loaded_root_block) &&
                     loaded_root_block.generation == UINT64_C(7),
-                    "old superblock remains current after alternate snapshot store") ||
-        !expect(vaultfs_superblock_store(&device, 1U, &backup), "backup stores") ||
-        !expect(vaultfs_root_directory_block_load_dual(&device, &backup, &loaded_root_block) &&
-                    loaded_root_block.generation == UINT64_C(8) && loaded_root_block.entry_count == 1U &&
-                    loaded_root_block.entries[0].object_id == UINT64_C(17),
-                    "promoted superblock loads alternate next root snapshot") ||
-        !expect(vaultfs_root_directory_block_load_dual(&device, &backup, &loaded_root_block) &&
-                    loaded_root_block.generation == UINT64_C(8),
-                    "dual root directory load selects a matching media snapshot") ||
-        !expect(vaultfs_root_directory_block_select(
-                    &root_block, &backup_root_block, UINT64_C(8), &selected_root_block) &&
-                    selected_root_block.generation == UINT64_C(8),
-                    "dual root snapshot selector retains a matching valid snapshot") ||
-        !expect(vaultfs_root_directory_block_load(&device, &primary, &loaded_root_block) &&
-                    loaded_root_block.generation == UINT64_C(7),
-                    "primary-only loader retains old root before promotion") ||
-        !expect(vaultfs_superblock_load_latest(&device, 0U, 1U, &selected) &&
-                    selected.generation == UINT64_C(8) && selected.root_directory_block == UINT64_C(2),
-                    "newer valid superblock is selected")) {
+                    "old superblock remains current after alternate snapshot store")) {
         return 1;
     }
 
@@ -144,8 +126,43 @@ int main(void) {
     loaded_journal_entry.checksum ^= UINT32_C(1);
     if (!expect(atlas_block_write(&device, UINT64_C(4), &loaded_journal_entry, sizeof(loaded_journal_entry)) &&
                     !vaultfs_root_update_snapshot_store(&device, UINT64_C(4), &primary, &update_plan, &root_block) &&
+                    !vaultfs_root_update_journal_store_committed(&device, UINT64_C(4), &primary, &update_plan) &&
                     vaultfs_root_update_journal_store_prepared(&device, UINT64_C(4), &update_plan),
                     "snapshot store rejects malformed persisted prepared journal")) {
+        return 1;
+    }
+
+    vaultfs_journal_prepare(&journal_entry, update_plan.transaction_id, primary.root_directory_block,
+                            update_plan.payload_checksum);
+    if (!expect(vaultfs_journal_store(&device, UINT64_C(4), &journal_entry) &&
+                    !vaultfs_root_update_journal_store_committed(&device, UINT64_C(4), &primary, &update_plan) &&
+                    vaultfs_root_update_journal_store_prepared(&device, UINT64_C(4), &update_plan) &&
+                    vaultfs_root_update_journal_store_committed(&device, UINT64_C(4), &primary, &update_plan) &&
+                    vaultfs_journal_load(&device, UINT64_C(4), &loaded_journal_entry) &&
+                    loaded_journal_entry.state == VAULTFS_JOURNAL_COMMITTED &&
+                    !vaultfs_recovery_decide(&primary, &loaded_journal_entry, &root_block, &recovery_decision),
+                    "commit requires matching persisted snapshot but does not promote old superblock")) {
+        return 1;
+    }
+
+    if (!expect(vaultfs_superblock_store(&device, 1U, &backup), "backup stores") ||
+        !expect(vaultfs_root_directory_block_load_dual(&device, &backup, &loaded_root_block) &&
+                    loaded_root_block.generation == UINT64_C(8) && loaded_root_block.entry_count == 1U &&
+                    loaded_root_block.entries[0].object_id == UINT64_C(17),
+                    "promoted superblock loads alternate next root snapshot") ||
+        !expect(vaultfs_root_directory_block_load_dual(&device, &backup, &loaded_root_block) &&
+                    loaded_root_block.generation == UINT64_C(8),
+                    "dual root directory load selects a matching media snapshot") ||
+        !expect(vaultfs_root_directory_block_select(
+                    &root_block, &backup_root_block, UINT64_C(8), &selected_root_block) &&
+                    selected_root_block.generation == UINT64_C(8),
+                    "dual root snapshot selector retains a matching valid snapshot") ||
+        !expect(vaultfs_root_directory_block_load(&device, &primary, &loaded_root_block) &&
+                    loaded_root_block.generation == UINT64_C(7),
+                    "primary-only loader retains old root before promotion") ||
+        !expect(vaultfs_superblock_load_latest(&device, 0U, 1U, &selected) &&
+                    selected.generation == UINT64_C(8) && selected.root_directory_block == UINT64_C(2),
+                    "newer valid superblock is selected")) {
         return 1;
     }
 
