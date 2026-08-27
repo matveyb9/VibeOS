@@ -124,6 +124,8 @@ int vaultfs_root_update_plan_form(
     const VAULTFS_ROOT_DIRECTORY_BLOCK *next_root_block,
     uint64_t transaction_id,
     VAULTFS_ROOT_UPDATE_PLAN *plan);
+int vaultfs_root_update_journal_prepare(
+    const VAULTFS_ROOT_UPDATE_PLAN *plan, VAULTFS_JOURNAL_ENTRY *journal);
 int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot);
 int vaultfs_system_slot_confirm(VAULTFS_SUPERBLOCK *superblock);
 int vaultfs_system_slot_recover(const VAULTFS_SUPERBLOCK *superblock, uint64_t *boot_slot);

@@ -52,3 +52,5 @@ Format 3 dual-root reference теперь имеют bounded media path. VaultFS
 VaultFS теперь также предоставляет conservative recovery decision для одного validated journal record и одного matching root snapshot. Он возвращает `DISCARD_PREPARED` только для sealed prepared record, target которого является одним root reference selected superblock, а payload checksum равен snapshot checksum; при тех же проверках sealed committed record даёт `ACCEPT_COMMITTED`. Он не изменяет media, не replay transaction и сам по себе не устанавливает atomic persistence.
 
 Теперь может быть сформирован immutable root update plan для valid next-generation root snapshot. Он содержит nonzero transaction, alternate backup root target, expected next generation и sealed payload checksum. Forming plan не выполняет block write, journal transition, superblock replacement или process-visible filesystem change.
+
+Plan может сформировать sealed `PREPARED` journal record с exact transaction identity, alternate target и payload checksum. Эта bounded transformation по-прежнему не выполняет device I/O, snapshot write, journal persistence, commit transition или superblock update.

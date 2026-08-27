@@ -403,6 +403,16 @@ int vaultfs_root_update_plan_form(
     return 1;
 }
 
+int vaultfs_root_update_journal_prepare(
+    const VAULTFS_ROOT_UPDATE_PLAN *plan, VAULTFS_JOURNAL_ENTRY *journal) {
+    if (plan == (const void *)0 || journal == (void *)0 || plan->transaction_id == 0U ||
+        plan->target_root_block == VAULTFS_ROOT_DIRECTORY_BLOCK_NONE || plan->next_generation == 0U) {
+        return 0;
+    }
+    vaultfs_journal_prepare(journal, plan->transaction_id, plan->target_root_block, plan->payload_checksum);
+    return vaultfs_journal_valid(journal);
+}
+
 int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot) {
     if (!vaultfs_superblock_valid(superblock) || !vaultfs_system_slot_valid(target_slot) ||
         target_slot == superblock->active_system_slot) {

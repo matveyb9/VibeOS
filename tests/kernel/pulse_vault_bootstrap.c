@@ -68,6 +68,12 @@ int main(void) {
                     "root update plan rejects zero transaction identity")) {
         return 1;
     }
+    if (!expect(vaultfs_root_update_journal_prepare(&update_plan, &journal_entry) &&
+                    journal_entry.state == VAULTFS_JOURNAL_PREPARED &&
+                    journal_entry.target_block == update_plan.target_root_block,
+                    "root update plan produces sealed prepared journal metadata")) {
+        return 1;
+    }
     if (!expect(vaultfs_superblock_valid(&primary) && primary.root_directory_block == UINT64_C(2),
                     "primary stores sealed root-directory block metadata") ||
         !expect(vaultfs_superblock_store(&device, 0U, &primary), "primary stores") ||
