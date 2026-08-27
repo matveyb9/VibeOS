@@ -20,6 +20,7 @@
 #include <prism.h>
 #include <horizon.h>
 #include <horizon_input.h>
+#include <horizon_runtime.h>
 #include <atlas_input.h>
 #include <atlas_pci.h>
 
@@ -106,13 +107,12 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         __asm__ volatile("ud2");
         pulse_debug_write("PULSE: invalid opcode unexpectedly returned\n");
 #elif defined(PULSE_PROBE_keyboard)
-        HORIZON_DESKTOP_STATE desktop_state;
-        HORIZON_INPUT_PUMP_RESULT input_result;
         PRISM_FRAMEBUFFER framebuffer;
+        HORIZON_DESKTOP_RUNTIME desktop_runtime;
+        HORIZON_DESKTOP_RUNTIME_STEP_RESULT desktop_step;
 
         if (!prism_framebuffer_from_dawn(context, &framebuffer) ||
-            !horizon_desktop_state_initialize(&desktop_state, 3U) ||
-            !horizon_render_desktop_for_state(&framebuffer, &desktop_state)) {
+            !horizon_desktop_runtime_initialize(&framebuffer, &desktop_runtime)) {
             pulse_debug_write("HORIZON: keyboard desktop initialization failed\n");
             pulse_debug_exit();
         }
@@ -124,15 +124,11 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         __asm__ volatile("sti" : : : "memory");
         for (;;) {
             __asm__ volatile("hlt");
-            if (!horizon_input_pump(&desktop_state, HORIZON_INPUT_PUMP_MAX_EVENTS, &input_result)) {
+            if (!horizon_desktop_runtime_step(&desktop_runtime, HORIZON_INPUT_PUMP_MAX_EVENTS, &desktop_step)) {
                 pulse_debug_write("HORIZON: keyboard event pump failed\n");
                 pulse_debug_exit();
             }
-            if (input_result.redraw_requested != 0U) {
-                if (!horizon_render_desktop_for_state(&framebuffer, &desktop_state)) {
-                    pulse_debug_write("HORIZON: keyboard focus redraw failed\n");
-                    pulse_debug_exit();
-                }
+            if (desktop_step.redraw_performed != 0U) {
                 pulse_debug_write("HORIZON: keyboard focus redrawn\n");
                 pulse_debug_exit();
             }
