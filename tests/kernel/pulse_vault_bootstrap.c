@@ -15,12 +15,13 @@ static int expect(int condition, const char *message) {
 }
 
 int main(void) {
-    uint8_t storage[ATLAS_BLOCK_BYTES * 3U];
+    uint8_t storage[ATLAS_BLOCK_BYTES * 4U];
     ATLAS_RAM_BLOCK_DEVICE device;
     VAULTFS_SUPERBLOCK primary;
     VAULTFS_SUPERBLOCK backup;
     VAULTFS_SUPERBLOCK selected;
     VAULTFS_JOURNAL_ENTRY journal_entry;
+    VAULTFS_JOURNAL_ENTRY loaded_journal_entry;
     VAULTFS_DIRECTORY directory;
     VAULTFS_ROOT_DIRECTORY_BLOCK root_block;
     VAULTFS_ROOT_DIRECTORY_BLOCK loaded_root_block;
@@ -92,6 +93,11 @@ int main(void) {
         !expect(vaultfs_journal_commit(&journal_entry), "prepared entry commits") ||
         !expect(journal_entry.state == VAULTFS_JOURNAL_COMMITTED && vaultfs_journal_valid(&journal_entry),
                     "committed entry is resealed") ||
+        !expect(vaultfs_journal_store(&device, UINT64_C(3), &journal_entry) &&
+                    vaultfs_journal_load(&device, UINT64_C(3), &loaded_journal_entry) &&
+                    loaded_journal_entry.transaction_id == UINT64_C(9) &&
+                    loaded_journal_entry.state == VAULTFS_JOURNAL_COMMITTED,
+                    "committed journal entry round-trips through canonical wire bytes") ||
         !expect(!vaultfs_journal_commit(&journal_entry), "committed entry cannot commit twice")) {
         return 1;
     }

@@ -68,8 +68,13 @@ static int vaultfs_entry_name_equal(const char *left, const char *right) {
     return 0;
 }
 
+static void vaultfs_journal_encode(const VAULTFS_JOURNAL_ENTRY *entry, uint8_t *bytes);
+
 static uint32_t vaultfs_journal_checksum(const VAULTFS_JOURNAL_ENTRY *entry) {
-    return vaultfs_crc32(entry, sizeof(VAULTFS_JOURNAL_ENTRY) - sizeof(entry->checksum));
+    uint8_t bytes[VAULTFS_JOURNAL_WIRE_BYTES];
+
+    vaultfs_journal_encode(entry, bytes);
+    return vaultfs_crc32(bytes, VAULTFS_JOURNAL_WIRE_BYTES - sizeof(entry->checksum));
 }
 
 static void vaultfs_write_u32_le(uint8_t *bytes, uint32_t value) {
@@ -135,6 +140,30 @@ static void vaultfs_superblock_decode(VAULTFS_SUPERBLOCK *superblock, const uint
     superblock->root_directory_block = vaultfs_read_u64_le(&bytes[40]);
     superblock->journal_sequence = vaultfs_read_u64_le(&bytes[48]);
     superblock->checksum = vaultfs_read_u32_le(&bytes[56]);
+}
+
+static void vaultfs_journal_encode(const VAULTFS_JOURNAL_ENTRY *entry, uint8_t *bytes) {
+    vaultfs_write_u64_le(&bytes[0], entry->magic);
+    vaultfs_write_u64_le(&bytes[8], entry->transaction_id);
+    vaultfs_write_u64_le(&bytes[16], entry->target_block);
+    vaultfs_write_u32_le(&bytes[24], entry->payload_checksum);
+    vaultfs_write_u32_le(&bytes[28], entry->state);
+    vaultfs_write_u32_le(&bytes[32], entry->checksum);
+}
+
+static void vaultfs_journal_decode(VAULTFS_JOURNAL_ENTRY *entry, const uint8_t *bytes) {
+    uint8_t *entry_bytes = (uint8_t *)entry;
+    uint32_t index;
+
+    for (index = 0U; index < sizeof(*entry); ++index) {
+        entry_bytes[index] = 0U;
+    }
+    entry->magic = vaultfs_read_u64_le(&bytes[0]);
+    entry->transaction_id = vaultfs_read_u64_le(&bytes[8]);
+    entry->target_block = vaultfs_read_u64_le(&bytes[16]);
+    entry->payload_checksum = vaultfs_read_u32_le(&bytes[24]);
+    entry->state = vaultfs_read_u32_le(&bytes[28]);
+    entry->checksum = vaultfs_read_u32_le(&bytes[32]);
 }
 
 static void vaultfs_root_directory_encode(const VAULTFS_ROOT_DIRECTORY_BLOCK *root_block, uint8_t *bytes) {
@@ -310,6 +339,28 @@ int vaultfs_journal_commit(VAULTFS_JOURNAL_ENTRY *entry) {
     entry->state = VAULTFS_JOURNAL_COMMITTED;
     entry->checksum = vaultfs_journal_checksum(entry);
     return 1;
+}
+
+int vaultfs_journal_store(
+    ATLAS_RAM_BLOCK_DEVICE *device, uint64_t block_index, const VAULTFS_JOURNAL_ENTRY *entry) {
+    uint8_t bytes[VAULTFS_JOURNAL_WIRE_BYTES];
+
+    if (!vaultfs_journal_valid(entry)) {
+        return 0;
+    }
+    vaultfs_journal_encode(entry, bytes);
+    return atlas_block_write(device, block_index, bytes, sizeof(bytes));
+}
+
+int vaultfs_journal_load(
+    const ATLAS_RAM_BLOCK_DEVICE *device, uint64_t block_index, VAULTFS_JOURNAL_ENTRY *entry) {
+    uint8_t bytes[VAULTFS_JOURNAL_WIRE_BYTES];
+
+    if (entry == (void *)0 || !atlas_block_read(device, block_index, bytes, sizeof(bytes))) {
+        return 0;
+    }
+    vaultfs_journal_decode(entry, bytes);
+    return vaultfs_journal_valid(entry);
 }
 
 int vaultfs_system_slot_stage(VAULTFS_SUPERBLOCK *superblock, uint64_t target_slot) {
