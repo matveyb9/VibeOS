@@ -4,6 +4,7 @@
 	.type _pulse_entry,@function
 _pulse_entry:
 	cli
+	cld
 	movq %rdi, %r12
 	movq 56(%r12), %rsp
 	andq $-16, %rsp
