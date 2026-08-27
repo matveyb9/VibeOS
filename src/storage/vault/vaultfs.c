@@ -29,6 +29,40 @@ static int vaultfs_system_slot_valid(uint64_t slot) {
     return slot == 0U || slot == 1U;
 }
 
+static int vaultfs_entry_name_valid(const char *name) {
+    uint32_t index;
+    char character;
+
+    if (name == (const void *)0 || name[0] == '\0') {
+        return 0;
+    }
+    for (index = 0U; index < VAULTFS_ENTRY_NAME_BYTES; ++index) {
+        character = name[index];
+        if (character == '\0') {
+            return 1;
+        }
+        if (!((character >= 'a' && character <= 'z') || (character >= '0' && character <= '9') ||
+              character == '.' || character == '-' || character == '_')) {
+            return 0;
+        }
+    }
+    return 0;
+}
+
+static int vaultfs_entry_name_equal(const char *left, const char *right) {
+    uint32_t index;
+
+    for (index = 0U; index < VAULTFS_ENTRY_NAME_BYTES; ++index) {
+        if (left[index] != right[index]) {
+            return 0;
+        }
+        if (left[index] == '\0') {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static uint32_t vaultfs_journal_checksum(const VAULTFS_JOURNAL_ENTRY *entry) {
     return vaultfs_crc32(entry, sizeof(VAULTFS_JOURNAL_ENTRY) - sizeof(entry->checksum));
 }
@@ -166,6 +200,56 @@ int vaultfs_system_slot_recover(const VAULTFS_SUPERBLOCK *superblock, uint64_t *
     }
     *boot_slot = superblock->active_system_slot;
     return 1;
+}
+
+void vaultfs_directory_initialize(VAULTFS_DIRECTORY *directory) {
+    uint8_t *bytes = (uint8_t *)directory;
+    uint64_t index;
+
+    if (directory == (void *)0) {
+        return;
+    }
+    for (index = 0U; index < sizeof(*directory); ++index) {
+        bytes[index] = 0U;
+    }
+}
+
+int vaultfs_directory_entry_valid(const VAULTFS_DIRECTORY_ENTRY *entry) {
+    return entry != (const void *)0 && entry->object_id != 0U && entry->first_block != UINT64_MAX &&
+           (entry->kind == VAULTFS_ENTRY_FILE || entry->kind == VAULTFS_ENTRY_DIRECTORY) &&
+           vaultfs_entry_name_valid(entry->name);
+}
+
+int vaultfs_directory_insert(VAULTFS_DIRECTORY *directory, const VAULTFS_DIRECTORY_ENTRY *entry) {
+    uint32_t index;
+
+    if (directory == (void *)0 || !vaultfs_directory_entry_valid(entry) ||
+        directory->count >= VAULTFS_DIRECTORY_CAPACITY) {
+        return 0;
+    }
+    if (vaultfs_directory_find(directory, entry->name) != (const void *)0) {
+        return 0;
+    }
+    for (index = 0U; index < sizeof(*entry); ++index) {
+        ((uint8_t *)&directory->entries[directory->count])[index] = ((const uint8_t *)entry)[index];
+    }
+    ++directory->count;
+    return 1;
+}
+
+const VAULTFS_DIRECTORY_ENTRY *vaultfs_directory_find(
+    const VAULTFS_DIRECTORY *directory, const char *name) {
+    uint32_t index;
+
+    if (directory == (const void *)0 || !vaultfs_entry_name_valid(name)) {
+        return (const void *)0;
+    }
+    for (index = 0U; index < directory->count; ++index) {
+        if (vaultfs_entry_name_equal(directory->entries[index].name, name)) {
+            return &directory->entries[index];
+        }
+    }
+    return (const void *)0;
 }
 
 int vaultfs_runtime_probe(void) {

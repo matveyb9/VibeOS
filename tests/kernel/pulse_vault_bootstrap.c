@@ -21,12 +21,31 @@ int main(void) {
     VAULTFS_SUPERBLOCK backup;
     VAULTFS_SUPERBLOCK selected;
     VAULTFS_JOURNAL_ENTRY journal_entry;
+    VAULTFS_DIRECTORY directory;
+    VAULTFS_DIRECTORY_ENTRY entry = {
+        UINT64_C(17), UINT64_C(2), UINT64_C(128), VAULTFS_ENTRY_FILE, "readme.txt"};
     uint64_t boot_slot;
 
     if (!expect(!atlas_ram_block_device_init(&device, storage, ATLAS_BLOCK_BYTES - 1U),
                     "unaligned block device size is rejected") ||
         !expect(atlas_ram_block_device_init(&device, storage, sizeof(storage)),
                     "aligned block device initializes")) {
+        return 1;
+    }
+
+    vaultfs_directory_initialize(&directory);
+    if (!expect(vaultfs_directory_entry_valid(&entry), "bounded directory entry validates") ||
+        !expect(vaultfs_directory_insert(&directory, &entry), "valid directory entry inserts") ||
+        !expect(directory.count == 1U && vaultfs_directory_find(&directory, "readme.txt") != (const void *)0 &&
+                    vaultfs_directory_find(&directory, "readme.txt")->object_id == UINT64_C(17),
+                    "read-only directory lookup returns inserted entry") ||
+        !expect(!vaultfs_directory_insert(&directory, &entry), "duplicate directory name is rejected")) {
+        return 1;
+    }
+    entry.object_id = 0U;
+    if (!expect(!vaultfs_directory_entry_valid(&entry), "zero directory object identity is rejected") ||
+        !expect(vaultfs_directory_find(&directory, "bad/name") == (const void *)0,
+                    "invalid directory lookup name is rejected")) {
         return 1;
     }
 
