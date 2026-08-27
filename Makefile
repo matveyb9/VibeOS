@@ -21,6 +21,7 @@ PULSE_INTERRUPTS_OBJ := $(BUILD_DIR)/pulse/interrupts/idt-x86_64.obj
 PULSE_SCHEDULER_OBJ := $(BUILD_DIR)/pulse/schedule/round-robin.obj
 PULSE_CONTEXT_OBJ := $(BUILD_DIR)/pulse/schedule/context.obj
 PULSE_TIMER_OBJ := $(BUILD_DIR)/pulse/time/pit-x86_64.obj
+PULSE_PIC_OBJ := $(BUILD_DIR)/pulse/interrupts/pic-x86_64.obj
 PULSE_KEYS_OBJ := $(BUILD_DIR)/security/keys/key-space.obj
 PULSE_RELAY_OBJ := $(BUILD_DIR)/ipc/relay/link.obj
 PULSE_RELAY_CHANNEL_OBJ := $(BUILD_DIR)/ipc/relay/channel.obj
@@ -28,6 +29,7 @@ PULSE_ORIGIN_OBJ := $(BUILD_DIR)/runtime/origin/origin.obj
 PULSE_ORIGIN_ABI_OBJ := $(BUILD_DIR)/runtime/origin/abi.obj
 PULSE_ATLAS_RAM_OBJ := $(BUILD_DIR)/drivers/atlas/ram-block.obj
 PULSE_ATLAS_KEYBOARD_OBJ := $(BUILD_DIR)/drivers/atlas/i8042-keyboard.obj
+PULSE_ATLAS_KEYBOARD_IRQ_OBJ := $(BUILD_DIR)/drivers/atlas/i8042-keyboard-irq.obj
 PULSE_VAULT_OBJ := $(BUILD_DIR)/storage/vault/vaultfs.obj
 PULSE_SESSION_OBJ := $(BUILD_DIR)/services/session/boot-mode.obj
 PULSE_PARCEL_OBJ := $(BUILD_DIR)/services/parcel/parcel.obj
@@ -72,7 +74,7 @@ PULSE_CFLAGS := --target=x86_64-unknown-elf -std=c17 -ffreestanding -fno-stack-p
 	-Isrc/apps/horizon/include
 PULSE_ASFLAGS := --target=x86_64-unknown-elf -ffreestanding -mno-red-zone
 
-.PHONY: all prelude pulse uefi-image check-uefi check-panic test test-panic clean
+.PHONY: all prelude pulse uefi-image check-uefi check-keyboard check-panic test test-panic clean
 
 all: uefi-image
 
@@ -122,6 +124,10 @@ $(PULSE_TIMER_OBJ): $(PULSE_DIR)/time/pit-x86_64.c $(PULSE_DIR)/include/timer.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
+$(PULSE_PIC_OBJ): $(PULSE_DIR)/interrupts/pic-x86_64.c $(PULSE_DIR)/include/pic.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
 $(PULSE_KEYS_OBJ): src/security/keys/key-space.c src/security/keys/include/keys.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
@@ -147,6 +153,10 @@ $(PULSE_ATLAS_RAM_OBJ): src/drivers/atlas/ram-block.c src/drivers/atlas/include/
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
 $(PULSE_ATLAS_KEYBOARD_OBJ): src/drivers/atlas/i8042-keyboard.c src/drivers/atlas/include/atlas_input.h
+	@mkdir -p $(dir $@)
+	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
+
+$(PULSE_ATLAS_KEYBOARD_IRQ_OBJ): src/drivers/atlas/i8042-keyboard-irq.c src/drivers/atlas/include/atlas_input.h $(PULSE_DIR)/include/pic.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
@@ -182,10 +192,10 @@ $(PULSE_PANIC_OBJ): $(PULSE_DIR)/debug/panic.c $(PULSE_DIR)/include/panic.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
-$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
+$(PULSE_ELF): $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_PANIC_OBJ) $(PULSE_DIR)/linker/x86_64.ld
 	@mkdir -p $(dir $@)
 	$(LLD_LD) -m elf_x86_64 -nostdlib --build-id=none -T $(PULSE_DIR)/linker/x86_64.ld \
-		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_PANIC_OBJ)
+		-o $@ $(PULSE_ENTRY_OBJ) $(PULSE_INTERRUPTS_ENTRY_OBJ) $(PULSE_CONTEXT_ENTRY_OBJ) $(PULSE_MAIN_OBJ) $(PULSE_MEMORY_OBJ) $(PULSE_PAGING_OBJ) $(PULSE_INTERRUPTS_OBJ) $(PULSE_SCHEDULER_OBJ) $(PULSE_CONTEXT_OBJ) $(PULSE_TIMER_OBJ) $(PULSE_PIC_OBJ) $(PULSE_KEYS_OBJ) $(PULSE_RELAY_OBJ) $(PULSE_RELAY_CHANNEL_OBJ) $(PULSE_ORIGIN_OBJ) $(PULSE_ORIGIN_ABI_OBJ) $(PULSE_ATLAS_RAM_OBJ) $(PULSE_ATLAS_KEYBOARD_OBJ) $(PULSE_ATLAS_KEYBOARD_IRQ_OBJ) $(PULSE_VAULT_OBJ) $(PULSE_SESSION_OBJ) $(PULSE_PARCEL_OBJ) $(PULSE_PRISM_OBJ) $(PULSE_PRISM_BOOTSTRAP_OBJ) $(PULSE_CANVAS_OBJ) $(PULSE_HORIZON_OBJ) $(PULSE_PANIC_OBJ)
 
 $(PULSE_BIN): $(PULSE_ELF)
 	$(LLVM_OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $< $@
@@ -215,10 +225,10 @@ $(PULSE_CONTEXT_TEST): tests/kernel/pulse_context_bootstrap.c $(PULSE_DIR)/sched
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include \
 		tests/kernel/pulse_context_bootstrap.c $(PULSE_DIR)/schedule/context.c -o $@
 
-$(PULSE_TIMER_TEST): tests/kernel/pulse_timer_bootstrap.c $(PULSE_DIR)/time/pit-x86_64.c $(PULSE_DIR)/include/timer.h
+$(PULSE_TIMER_TEST): tests/kernel/pulse_timer_bootstrap.c $(PULSE_DIR)/time/pit-x86_64.c $(PULSE_DIR)/interrupts/pic-x86_64.c $(PULSE_DIR)/include/timer.h $(PULSE_DIR)/include/pic.h
 	@mkdir -p $(dir $@)
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -I$(PULSE_DIR)/include \
-		tests/kernel/pulse_timer_bootstrap.c $(PULSE_DIR)/time/pit-x86_64.c -o $@
+		tests/kernel/pulse_timer_bootstrap.c $(PULSE_DIR)/time/pit-x86_64.c $(PULSE_DIR)/interrupts/pic-x86_64.c -o $@
 
 $(PULSE_RELAY_TEST): tests/kernel/pulse_relay_bootstrap.c src/security/keys/key-space.c src/ipc/relay/link.c src/ipc/relay/channel.c src/runtime/origin/origin.c src/runtime/origin/abi.c
 	@mkdir -p $(dir $@)
@@ -279,6 +289,10 @@ $(ESP_IMAGE): $(PRELUDE_EFI)
 check-uefi: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "ATLAS: keyboard event queue verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
 
+check-keyboard:
+	$(MAKE) BUILD_DIR=build-keyboard PULSE_PROBE=keyboard uefi-image
+	tools/check-keyboard.sh build-keyboard/vibeos-uefi-esp.img "ATLAS: keyboard irq probe ready" "ATLAS: keyboard IRQ1 event handled"
+
 check-panic: $(ESP_IMAGE)
 	tools/check-uefi.sh $(ESP_IMAGE) "PULSE PANIC: unhandled interrupt"
 
@@ -296,6 +310,7 @@ test: check-uefi $(PULSE_MEMORY_TEST) $(PULSE_PAGING_TEST) $(PULSE_INTERRUPTS_TE
 	$(PULSE_CANVAS_TEST)
 	$(PULSE_HORIZON_TEST)
 	$(PULSE_KEYBOARD_TEST)
+	$(MAKE) check-keyboard
 	$(MAKE) BUILD_DIR=build-panic PULSE_PROBE=panic check-panic
 	tests/boot/check-prelude-artifact.sh $(ESP_IMAGE) $(PRELUDE_EFI) $(PULSE_ELF)
 

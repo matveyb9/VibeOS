@@ -8,6 +8,7 @@
 void pulse_x86_default_interrupt(void) {}
 void pulse_x86_breakpoint_interrupt(void) {}
 void pulse_x86_timer_interrupt(void) {}
+void pulse_x86_keyboard_interrupt(void) {}
 
 static int expect(int condition, const char *message) {
     if (!condition) {
@@ -37,6 +38,8 @@ int main(void) {
     if (!expect(gate_target(&table[0]) == default_handler, "default vector target is preserved") ||
         !expect(gate_target(&table[PULSE_X86_BREAKPOINT_VECTOR]) == breakpoint_handler,
                     "breakpoint vector target is specialized") ||
+        !expect(gate_target(&table[PULSE_X86_KEYBOARD_VECTOR]) == (uintptr_t)pulse_x86_keyboard_interrupt,
+                    "keyboard vector target is specialized") ||
         !expect(table[0].selector == UINT16_C(0x08), "code selector is stored") ||
         !expect(table[PULSE_X86_BREAKPOINT_VECTOR].attributes == UINT8_C(0x8e),
                     "present interrupt-gate attributes are stored") ||

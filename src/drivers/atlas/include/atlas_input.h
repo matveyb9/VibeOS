@@ -18,5 +18,7 @@ int atlas_keyboard_receive_scancode(uint8_t scancode);
 int atlas_keyboard_next_event(ATLAS_KEY_EVENT *event);
 uint32_t atlas_keyboard_pending_event_count(void);
 int atlas_keyboard_runtime_probe(void);
+int atlas_i8042_keyboard_prepare_irq1(void);
+int atlas_i8042_keyboard_handle_irq1(void);
 
 #endif

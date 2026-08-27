@@ -81,6 +81,16 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
 #if defined(PULSE_PROBE_panic)
         __asm__ volatile("ud2");
         pulse_debug_write("PULSE: invalid opcode unexpectedly returned\n");
+#elif defined(PULSE_PROBE_keyboard)
+        if (!atlas_i8042_keyboard_prepare_irq1()) {
+            pulse_debug_write("ATLAS: keyboard IRQ1 preparation failed\n");
+            pulse_debug_exit();
+        }
+        pulse_debug_write("ATLAS: keyboard irq probe ready\n");
+        __asm__ volatile("sti" : : : "memory");
+        for (;;) {
+            __asm__ volatile("hlt");
+        }
 #else
         if (!pulse_context_run_probe()) {
             pulse_debug_write("PULSE: task context bootstrap failed\n");
