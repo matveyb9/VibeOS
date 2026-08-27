@@ -10,7 +10,7 @@ VibeOS is not a Linux distribution and does not inherit a POSIX compatibility la
 
 ## Current status
 
-VibeOS is in the **project foundation** stage. The architecture, repository principles, and initial documentation are established. The first independent x86_64 UEFI Prelude image now builds and is verified in QEMU; Pulse is not yet loaded.
+VibeOS is in the **project foundation** stage. The architecture, repository principles, and initial documentation are established. The first independent x86_64 UEFI Prelude image builds and is verified in QEMU. It now captures a UEFI memory map, exits firmware Boot Services, and transfers `Dawn Context v1` to an early native Pulse image.
 
 ## What we are building
 
@@ -42,6 +42,7 @@ Read the [simplified roadmap](docs/en/ROADMAP.md) for the full sequence and its 
 - Read the [contribution and workflow guide](docs/en/CONTRIBUTING.md).
 - Build the first [x86_64 UEFI Prelude image](docs/en/guides/BUILD_X86_64_UEFI.md).
 - Configure a supported [Prelude host environment](docs/en/guides/HOST_ENVIRONMENTS.md).
+- Inspect the [Dawn Context v1 boot contract](docs/en/specs/DAWN_CONTEXT.md).
 - See the planned [application platform and Vibe SDK](docs/en/SDK.md).
 - Track the [roadmap](docs/en/ROADMAP.md).
 

@@ -49,4 +49,6 @@ make test
 Prelude UEFI verification passed.
 ```
 
+QEMU diagnostic marker подтверждает, что Prelude сохранил UEFI memory map, успешно завершил `ExitBootServices()` и передал сохранённый [Dawn Context v1](../specs/DAWN_CONTEXT.md) в Pulse.
+
 Руководства для host-систем Windows и macOS будут добавлены вместе с эквивалентными проверенными профилями toolchain. Пока они не заявляются реализованными.

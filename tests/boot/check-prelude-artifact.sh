@@ -2,15 +2,16 @@
 # VibeOS Project Foundation — smoke checks for generated Prelude artifacts.
 set -euo pipefail
 
-if [[ $# -ne 2 ]]; then
-    echo "usage: $0 <esp-image> <efi-application>" >&2
+if [[ $# -ne 3 ]]; then
+    echo "usage: $0 <esp-image> <efi-application> <pulse-elf>" >&2
     exit 64
 fi
 
 esp_image=$1
 efi_application=$2
+pulse_elf=$3
 
-for required_file in "$esp_image" "$efi_application"; do
+for required_file in "$esp_image" "$efi_application" "$pulse_elf"; do
     if [[ ! -f "$required_file" ]]; then
         echo "missing artifact: $required_file" >&2
         exit 66
@@ -28,6 +29,10 @@ file_headers=$(llvm-readobj --file-headers "$efi_application")
 grep -Fq 'Format: COFF-x86-64' <<<"$file_headers"
 grep -Fq 'Machine: IMAGE_FILE_MACHINE_AMD64' <<<"$file_headers"
 grep -Fq 'Subsystem: IMAGE_SUBSYSTEM_EFI_APPLICATION' <<<"$file_headers"
+
+pulse_headers=$(llvm-readobj --file-headers "$pulse_elf")
+grep -Fq 'Format: elf64-x86-64' <<<"$pulse_headers"
+grep -Fq 'Machine: EM_X86_64' <<<"$pulse_headers"
 
 esp_listing=$(mdir -i "$esp_image" ::/EFI/BOOT)
 grep -Eq 'BOOTX64[[:space:]]+EFI' <<<"$esp_listing"

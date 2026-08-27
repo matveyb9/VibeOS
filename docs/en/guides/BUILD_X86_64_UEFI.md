@@ -49,4 +49,6 @@ In addition to the QEMU boot probe, this validates the generated PE/COFF applica
 Prelude UEFI verification passed.
 ```
 
+The QEMU debug marker confirms that Prelude captured the UEFI memory map, successfully completed `ExitBootServices()`, and transferred the retained [Dawn Context v1](../specs/DAWN_CONTEXT.md) to Pulse.
+
 Windows and macOS host guides will be added with equivalent tested toolchain profiles. They are not yet claimed as implemented.
