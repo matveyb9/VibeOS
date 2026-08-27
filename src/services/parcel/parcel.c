@@ -175,6 +175,57 @@ int parcel_executable_image_descriptor_valid(const PARCEL_EXECUTABLE_IMAGE_DESCR
            descriptor->entry_offset < descriptor->byte_count && descriptor->payload_checksum != 0U;
 }
 
+static uint16_t parcel_read_u16_le(const uint8_t *bytes) {
+    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
+}
+
+static uint64_t parcel_read_u64_le(const uint8_t *bytes) {
+    uint64_t value = 0U;
+    uint32_t index;
+
+    for (index = 0U; index < 8U; ++index) {
+        value |= ((uint64_t)bytes[index]) << (index * 8U);
+    }
+    return value;
+}
+
+int parcel_elf64_header_describe(
+    const uint8_t *header,
+    uint32_t header_bytes,
+    PARCEL_ELF64_HEADER_METADATA *metadata) {
+    uint16_t program_header_entry_size;
+    uint16_t program_header_count;
+    uint64_t program_header_offset;
+
+    if (header == (const void *)0 || metadata == (void *)0 || header_bytes < PARCEL_ELF64_HEADER_BYTES ||
+        header[0] != 0x7fU || header[1] != 'E' || header[2] != 'L' || header[3] != 'F' || header[4] != 2U ||
+        header[5] != 1U || header[6] != 1U || parcel_read_u16_le(&header[16]) != 2U ||
+        parcel_read_u16_le(&header[18]) != 62U || header[20] != 1U || header[21] != 0U || header[22] != 0U ||
+        header[23] != 0U ||
+        parcel_read_u16_le(&header[52]) != PARCEL_ELF64_HEADER_BYTES) {
+        return 0;
+    }
+    program_header_offset = parcel_read_u64_le(&header[32]);
+    program_header_entry_size = parcel_read_u16_le(&header[54]);
+    program_header_count = parcel_read_u16_le(&header[56]);
+    if ((program_header_count == 0U &&
+         (program_header_offset != 0U || program_header_entry_size != 0U)) ||
+        (program_header_count != 0U &&
+         (program_header_offset < PARCEL_ELF64_HEADER_BYTES || program_header_entry_size < 56U ||
+          program_header_offset > UINT64_MAX -
+                                      ((uint64_t)program_header_entry_size * (uint64_t)program_header_count)))) {
+        return 0;
+    }
+    metadata->image_type = parcel_read_u16_le(&header[16]);
+    metadata->machine = parcel_read_u16_le(&header[18]);
+    metadata->entry_address = parcel_read_u64_le(&header[24]);
+    metadata->program_header_offset = program_header_offset;
+    metadata->header_size = parcel_read_u16_le(&header[52]);
+    metadata->program_header_entry_size = program_header_entry_size;
+    metadata->program_header_count = program_header_count;
+    return 1;
+}
+
 int parcel_registry_admits_native_launch(
     const PARCEL_REGISTRY *registry, const PARCEL_NATIVE_LAUNCH_REQUEST *request) {
     PARCEL_NATIVE_LAUNCH_ADMISSION admission;

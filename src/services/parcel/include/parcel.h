@@ -11,6 +11,7 @@
 #define PARCEL_REGISTRY_OBJECT UINT64_C(2)
 #define PARCEL_NATIVE_LAUNCH_REQUEST_VERSION UINT32_C(1)
 #define PARCEL_EXECUTABLE_IMAGE_DESCRIPTOR_VERSION UINT32_C(1)
+#define PARCEL_ELF64_HEADER_BYTES UINT32_C(64)
 
 typedef enum {
     PARCEL_SCOPE_CORE = 1,
@@ -66,6 +67,16 @@ typedef struct {
     uint32_t payload_checksum;
 } PARCEL_EXECUTABLE_IMAGE_DESCRIPTOR;
 
+typedef struct {
+    uint16_t image_type;
+    uint16_t machine;
+    uint64_t entry_address;
+    uint64_t program_header_offset;
+    uint16_t header_size;
+    uint16_t program_header_entry_size;
+    uint16_t program_header_count;
+} PARCEL_ELF64_HEADER_METADATA;
+
 void parcel_manifest_initialize(
     PARCEL_MANIFEST *manifest,
     const char *application_id,
@@ -89,6 +100,10 @@ int parcel_registry_admit_native_launch(
     const PARCEL_NATIVE_LAUNCH_REQUEST *request,
     PARCEL_NATIVE_LAUNCH_ADMISSION *admission);
 int parcel_executable_image_descriptor_valid(const PARCEL_EXECUTABLE_IMAGE_DESCRIPTOR *descriptor);
+int parcel_elf64_header_describe(
+    const uint8_t *header,
+    uint32_t header_bytes,
+    PARCEL_ELF64_HEADER_METADATA *metadata);
 int parcel_runtime_probe(void);
 
 #endif
