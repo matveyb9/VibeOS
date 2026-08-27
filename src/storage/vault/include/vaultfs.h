@@ -10,6 +10,8 @@
 #define VAULTFS_JOURNAL_MAGIC UINT64_C(0x5641554c544a4e31)
 #define VAULTFS_SYSTEM_SLOT_NONE UINT64_MAX
 #define VAULTFS_ROOT_DIRECTORY_BLOCK_NONE UINT64_MAX
+#define VAULTFS_ROOT_DIRECTORY_MAGIC UINT64_C(0x5641554c54524431)
+#define VAULTFS_ROOT_DIRECTORY_VERSION UINT32_C(1)
 #define VAULTFS_DIRECTORY_CAPACITY UINT32_C(16)
 #define VAULTFS_ENTRY_NAME_BYTES UINT32_C(32)
 
@@ -44,7 +46,7 @@ typedef struct __attribute__((packed)) {
     uint32_t checksum;
 } VAULTFS_JOURNAL_ENTRY;
 
-typedef struct {
+typedef struct __attribute__((packed)) {
     uint64_t object_id;
     uint64_t first_block;
     uint64_t byte_count;
@@ -56,6 +58,15 @@ typedef struct {
     VAULTFS_DIRECTORY_ENTRY entries[VAULTFS_DIRECTORY_CAPACITY];
     uint32_t count;
 } VAULTFS_DIRECTORY;
+
+typedef struct __attribute__((packed)) {
+    uint64_t magic;
+    uint32_t format_version;
+    uint32_t entry_count;
+    uint64_t generation;
+    VAULTFS_DIRECTORY_ENTRY entries[VAULTFS_DIRECTORY_CAPACITY];
+    uint32_t checksum;
+} VAULTFS_ROOT_DIRECTORY_BLOCK;
 
 uint32_t vaultfs_crc32(const void *data, uint64_t byte_count);
 
@@ -90,6 +101,19 @@ int vaultfs_directory_entry_valid(const VAULTFS_DIRECTORY_ENTRY *entry);
 int vaultfs_directory_insert(VAULTFS_DIRECTORY *directory, const VAULTFS_DIRECTORY_ENTRY *entry);
 const VAULTFS_DIRECTORY_ENTRY *vaultfs_directory_find(
     const VAULTFS_DIRECTORY *directory, const char *name);
+void vaultfs_root_directory_block_initialize(
+    VAULTFS_ROOT_DIRECTORY_BLOCK *root_block,
+    const VAULTFS_DIRECTORY *directory,
+    uint64_t generation);
+int vaultfs_root_directory_block_valid(const VAULTFS_ROOT_DIRECTORY_BLOCK *root_block);
+int vaultfs_root_directory_block_store(
+    ATLAS_RAM_BLOCK_DEVICE *device,
+    const VAULTFS_SUPERBLOCK *superblock,
+    const VAULTFS_ROOT_DIRECTORY_BLOCK *root_block);
+int vaultfs_root_directory_block_load(
+    const ATLAS_RAM_BLOCK_DEVICE *device,
+    const VAULTFS_SUPERBLOCK *superblock,
+    VAULTFS_ROOT_DIRECTORY_BLOCK *root_block);
 int vaultfs_runtime_probe(void);
 
 #endif

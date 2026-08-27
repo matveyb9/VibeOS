@@ -67,6 +67,10 @@ static uint32_t vaultfs_journal_checksum(const VAULTFS_JOURNAL_ENTRY *entry) {
     return vaultfs_crc32(entry, sizeof(VAULTFS_JOURNAL_ENTRY) - sizeof(entry->checksum));
 }
 
+static uint32_t vaultfs_root_directory_checksum(const VAULTFS_ROOT_DIRECTORY_BLOCK *root_block) {
+    return vaultfs_crc32(root_block, sizeof(VAULTFS_ROOT_DIRECTORY_BLOCK) - sizeof(root_block->checksum));
+}
+
 static void vaultfs_copy(VAULTFS_SUPERBLOCK *destination, const VAULTFS_SUPERBLOCK *source) {
     const uint8_t *source_bytes = (const uint8_t *)source;
     uint8_t *destination_bytes = (uint8_t *)destination;
@@ -253,6 +257,76 @@ const VAULTFS_DIRECTORY_ENTRY *vaultfs_directory_find(
         }
     }
     return (const void *)0;
+}
+
+void vaultfs_root_directory_block_initialize(
+    VAULTFS_ROOT_DIRECTORY_BLOCK *root_block,
+    const VAULTFS_DIRECTORY *directory,
+    uint64_t generation) {
+    uint8_t *bytes = (uint8_t *)root_block;
+    uint32_t index;
+
+    if (root_block == (void *)0 || directory == (const void *)0 || directory->count > VAULTFS_DIRECTORY_CAPACITY) {
+        return;
+    }
+    for (index = 0U; index < sizeof(*root_block); ++index) {
+        bytes[index] = 0U;
+    }
+    root_block->magic = VAULTFS_ROOT_DIRECTORY_MAGIC;
+    root_block->format_version = VAULTFS_ROOT_DIRECTORY_VERSION;
+    root_block->entry_count = directory->count;
+    root_block->generation = generation;
+    for (index = 0U; index < directory->count; ++index) {
+        uint32_t byte_index;
+        for (byte_index = 0U; byte_index < sizeof(VAULTFS_DIRECTORY_ENTRY); ++byte_index) {
+            ((uint8_t *)&root_block->entries[index])[byte_index] = ((const uint8_t *)&directory->entries[index])[byte_index];
+        }
+    }
+    root_block->checksum = vaultfs_root_directory_checksum(root_block);
+}
+
+int vaultfs_root_directory_block_valid(const VAULTFS_ROOT_DIRECTORY_BLOCK *root_block) {
+    uint32_t index;
+    uint32_t other_index;
+
+    if (root_block == (const void *)0 || root_block->magic != VAULTFS_ROOT_DIRECTORY_MAGIC ||
+        root_block->format_version != VAULTFS_ROOT_DIRECTORY_VERSION ||
+        root_block->entry_count > VAULTFS_DIRECTORY_CAPACITY ||
+        root_block->checksum != vaultfs_root_directory_checksum(root_block)) {
+        return 0;
+    }
+    for (index = 0U; index < root_block->entry_count; ++index) {
+        if (!vaultfs_directory_entry_valid(&root_block->entries[index])) {
+            return 0;
+        }
+        for (other_index = 0U; other_index < index; ++other_index) {
+            if (vaultfs_entry_name_equal(root_block->entries[index].name, root_block->entries[other_index].name)) {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+int vaultfs_root_directory_block_store(
+    ATLAS_RAM_BLOCK_DEVICE *device,
+    const VAULTFS_SUPERBLOCK *superblock,
+    const VAULTFS_ROOT_DIRECTORY_BLOCK *root_block) {
+    if (!vaultfs_superblock_valid(superblock) || !vaultfs_root_directory_block_valid(root_block)) {
+        return 0;
+    }
+    return atlas_block_write(device, superblock->root_directory_block, root_block, sizeof(*root_block));
+}
+
+int vaultfs_root_directory_block_load(
+    const ATLAS_RAM_BLOCK_DEVICE *device,
+    const VAULTFS_SUPERBLOCK *superblock,
+    VAULTFS_ROOT_DIRECTORY_BLOCK *root_block) {
+    if (!vaultfs_superblock_valid(superblock) || root_block == (void *)0 ||
+        !atlas_block_read(device, superblock->root_directory_block, root_block, sizeof(*root_block))) {
+        return 0;
+    }
+    return vaultfs_root_directory_block_valid(root_block);
 }
 
 int vaultfs_runtime_probe(void) {

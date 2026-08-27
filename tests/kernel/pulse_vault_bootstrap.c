@@ -22,6 +22,8 @@ int main(void) {
     VAULTFS_SUPERBLOCK selected;
     VAULTFS_JOURNAL_ENTRY journal_entry;
     VAULTFS_DIRECTORY directory;
+    VAULTFS_ROOT_DIRECTORY_BLOCK root_block;
+    VAULTFS_ROOT_DIRECTORY_BLOCK loaded_root_block;
     VAULTFS_DIRECTORY_ENTRY entry = {
         UINT64_C(17), UINT64_C(2), UINT64_C(128), VAULTFS_ENTRY_FILE, "readme.txt"};
     uint64_t boot_slot;
@@ -48,6 +50,7 @@ int main(void) {
                     "invalid directory lookup name is rejected")) {
         return 1;
     }
+    vaultfs_root_directory_block_initialize(&root_block, &directory, UINT64_C(8));
 
     vaultfs_superblock_initialize(&primary, UINT64_C(7), 0U, UINT64_C(2), UINT64_C(70));
     vaultfs_superblock_initialize(&backup, UINT64_C(8), 1U, UINT64_C(2), UINT64_C(80));
@@ -55,6 +58,12 @@ int main(void) {
                     "primary stores sealed root-directory block metadata") ||
         !expect(vaultfs_superblock_store(&device, 0U, &primary), "primary stores") ||
         !expect(vaultfs_superblock_store(&device, 1U, &backup), "backup stores") ||
+        !expect(vaultfs_root_directory_block_valid(&root_block), "root directory block checksum validates") ||
+        !expect(vaultfs_root_directory_block_store(&device, &backup, &root_block), "root directory block stores") ||
+        !expect(vaultfs_root_directory_block_load(&device, &backup, &loaded_root_block) &&
+                    loaded_root_block.generation == UINT64_C(8) && loaded_root_block.entry_count == 1U &&
+                    loaded_root_block.entries[0].object_id == UINT64_C(17),
+                    "root directory block loads through sealed superblock reference") ||
         !expect(vaultfs_superblock_load_latest(&device, 0U, 1U, &selected) &&
                     selected.generation == UINT64_C(8) && selected.root_directory_block == UINT64_C(2),
                     "newer valid superblock is selected")) {
