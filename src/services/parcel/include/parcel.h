@@ -42,6 +42,17 @@ typedef struct {
     char application_id[PARCEL_APPLICATION_ID_BYTES];
 } PARCEL_NATIVE_LAUNCH_REQUEST;
 
+typedef enum {
+    PARCEL_NATIVE_LAUNCH_REJECTED_INVALID_REQUEST = 1,
+    PARCEL_NATIVE_LAUNCH_REJECTED_NOT_INSTALLED = 2,
+    PARCEL_NATIVE_LAUNCH_ADMITTED = 3
+} PARCEL_NATIVE_LAUNCH_ADMISSION_STATUS;
+
+typedef struct {
+    uint32_t status;
+    uint32_t native_application_id;
+} PARCEL_NATIVE_LAUNCH_ADMISSION;
+
 void parcel_manifest_initialize(
     PARCEL_MANIFEST *manifest,
     const char *application_id,
@@ -60,6 +71,10 @@ int parcel_native_launch_request_initialize(
 int parcel_native_launch_request_valid(const PARCEL_NATIVE_LAUNCH_REQUEST *request);
 int parcel_registry_admits_native_launch(
     const PARCEL_REGISTRY *registry, const PARCEL_NATIVE_LAUNCH_REQUEST *request);
+int parcel_registry_admit_native_launch(
+    const PARCEL_REGISTRY *registry,
+    const PARCEL_NATIVE_LAUNCH_REQUEST *request,
+    PARCEL_NATIVE_LAUNCH_ADMISSION *admission);
 int parcel_runtime_probe(void);
 
 #endif

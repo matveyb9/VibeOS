@@ -171,17 +171,34 @@ int parcel_native_launch_request_valid(const PARCEL_NATIVE_LAUNCH_REQUEST *reque
 
 int parcel_registry_admits_native_launch(
     const PARCEL_REGISTRY *registry, const PARCEL_NATIVE_LAUNCH_REQUEST *request) {
+    PARCEL_NATIVE_LAUNCH_ADMISSION admission;
+
+    return parcel_registry_admit_native_launch(registry, request, &admission) &&
+           admission.status == PARCEL_NATIVE_LAUNCH_ADMITTED;
+}
+
+int parcel_registry_admit_native_launch(
+    const PARCEL_REGISTRY *registry,
+    const PARCEL_NATIVE_LAUNCH_REQUEST *request,
+    PARCEL_NATIVE_LAUNCH_ADMISSION *admission) {
     uint32_t index;
 
-    if (registry == (const void *)0 || !parcel_native_launch_request_valid(request)) {
+    if (admission == (void *)0) {
         return 0;
+    }
+    admission->native_application_id = request != (const void *)0 ? request->native_application_id : 0U;
+    admission->status = PARCEL_NATIVE_LAUNCH_REJECTED_INVALID_REQUEST;
+    if (registry == (const void *)0 || !parcel_native_launch_request_valid(request)) {
+        return 1;
     }
     for (index = 0U; index < registry->count; ++index) {
         if (parcel_identifier_equal(registry->entries[index].application_id, request->application_id)) {
+            admission->status = PARCEL_NATIVE_LAUNCH_ADMITTED;
             return 1;
         }
     }
-    return 0;
+    admission->status = PARCEL_NATIVE_LAUNCH_REJECTED_NOT_INSTALLED;
+    return 1;
 }
 
 int parcel_runtime_probe(void) {

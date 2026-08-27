@@ -19,6 +19,7 @@ int main(void) {
     PARCEL_INSTALL_REQUEST request;
     PARCEL_REGISTRY registry;
     PARCEL_NATIVE_LAUNCH_REQUEST launch_request;
+    PARCEL_NATIVE_LAUNCH_ADMISSION admission;
     VIBE_KEY authority;
     VIBE_KEY read_only;
 
@@ -46,6 +47,10 @@ int main(void) {
         !expect(parcel_native_launch_request_initialize(&launch_request, HORIZON_APPLICATION_CUE),
                     "known native application forms a request") ||
         !expect(parcel_native_launch_request_valid(&launch_request), "native launch request is valid") ||
+        !expect(parcel_registry_admit_native_launch(&registry, &launch_request, &admission) &&
+                    admission.status == PARCEL_NATIVE_LAUNCH_ADMITTED &&
+                    admission.native_application_id == HORIZON_APPLICATION_CUE,
+                    "installed native application has an explicit admitted result") ||
         !expect(parcel_registry_admits_native_launch(&registry, &launch_request),
                     "installed native application is admitted") ||
         !expect(!parcel_native_launch_request_initialize(&launch_request, UINT32_C(99)),
@@ -58,6 +63,13 @@ int main(void) {
     request.signature_verified = 0;
     if (!expect(!parcel_registry_install(&registry, authority, &request),
                     "unverified manifest is rejected") ||
+        !expect(parcel_native_launch_request_initialize(&launch_request, HORIZON_APPLICATION_VECTOR) &&
+                    parcel_registry_admit_native_launch(&registry, &launch_request, &admission) &&
+                    admission.status == PARCEL_NATIVE_LAUNCH_REJECTED_NOT_INSTALLED,
+                    "uninstalled native application has an explicit rejection result") ||
+        !expect(parcel_registry_admit_native_launch(&registry, (const void *)0, &admission) &&
+                    admission.status == PARCEL_NATIVE_LAUNCH_REJECTED_INVALID_REQUEST,
+                    "invalid request has an explicit rejection result") ||
         !expect(parcel_runtime_probe(), "Parcel runtime probe succeeds")) {
         return 1;
     }
