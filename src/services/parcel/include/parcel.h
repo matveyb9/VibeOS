@@ -9,6 +9,7 @@
 #define PARCEL_APPLICATION_ID_BYTES UINT32_C(32)
 #define PARCEL_REGISTRY_CAPACITY UINT32_C(16)
 #define PARCEL_REGISTRY_OBJECT UINT64_C(2)
+#define PARCEL_NATIVE_LAUNCH_REQUEST_VERSION UINT32_C(1)
 
 typedef enum {
     PARCEL_SCOPE_CORE = 1,
@@ -35,6 +36,12 @@ typedef struct {
     uint32_t count;
 } PARCEL_REGISTRY;
 
+typedef struct {
+    uint32_t format_version;
+    uint32_t native_application_id;
+    char application_id[PARCEL_APPLICATION_ID_BYTES];
+} PARCEL_NATIVE_LAUNCH_REQUEST;
+
 void parcel_manifest_initialize(
     PARCEL_MANIFEST *manifest,
     const char *application_id,
@@ -48,6 +55,11 @@ int parcel_registry_install(
     PARCEL_REGISTRY *registry,
     VIBE_KEY installer_key,
     const PARCEL_INSTALL_REQUEST *request);
+int parcel_native_launch_request_initialize(
+    PARCEL_NATIVE_LAUNCH_REQUEST *request, uint32_t native_application_id);
+int parcel_native_launch_request_valid(const PARCEL_NATIVE_LAUNCH_REQUEST *request);
+int parcel_registry_admits_native_launch(
+    const PARCEL_REGISTRY *registry, const PARCEL_NATIVE_LAUNCH_REQUEST *request);
 int parcel_runtime_probe(void);
 
 #endif

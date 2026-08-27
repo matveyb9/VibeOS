@@ -47,6 +47,7 @@ int horizon_input_pump(
     result->dequeued_event_count = 0U;
     result->handled_event_count = 0U;
     result->redraw_requested = 0U;
+    result->selection_requested = 0U;
     for (event_index = 0U; event_index < maximum_events && atlas_keyboard_next_event(&event); ++event_index) {
         uint32_t handled;
         uint32_t previous_focus = state->focused_window;
@@ -57,6 +58,9 @@ int horizon_input_pump(
         }
         ++result->dequeued_event_count;
         result->handled_event_count += handled;
+        if (handled != 0U && event.pressed != 0U && event.key == ATLAS_KEY_ENTER) {
+            result->selection_requested = 1U;
+        }
         if (state->focused_window != previous_focus || state->selected_window != previous_selection) {
             result->redraw_requested = 1U;
         }
@@ -84,6 +88,7 @@ int horizon_input_runtime_probe(void) {
            horizon_input_apply_event(&state, &(ATLAS_KEY_EVENT){UINT8_C(0x1c), 1U, '\0', ATLAS_KEY_ENTER, ATLAS_KEY_NONE}, &handled) &&
            handled == 1U && state.selected_window == 1U && horizon_desktop_state_initialize(&state, 3U) &&
            horizon_input_pump(&state, 4U, &result) && result.dequeued_event_count == 4U &&
-           result.handled_event_count == 3U && result.redraw_requested == 1U && state.focused_window == 2U &&
+           result.handled_event_count == 3U && result.redraw_requested == 1U && result.selection_requested == 1U &&
+           state.focused_window == 2U &&
            state.selected_window == 1U && atlas_keyboard_pending_event_count() == 0U;
 }

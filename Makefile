@@ -197,7 +197,7 @@ $(PULSE_SESSION_OBJ): src/services/session/boot-mode.c src/services/session/incl
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
-$(PULSE_PARCEL_OBJ): src/services/parcel/parcel.c src/services/parcel/include/parcel.h src/security/keys/include/keys.h
+$(PULSE_PARCEL_OBJ): src/services/parcel/parcel.c src/services/parcel/include/parcel.h src/security/keys/include/keys.h src/apps/horizon/include/horizon.h
 	@mkdir -p $(dir $@)
 	$(CLANG) $(PULSE_CFLAGS) -c $< -o $@
 
@@ -290,9 +290,9 @@ $(PULSE_SESSION_TEST): tests/kernel/pulse_session_bootstrap.c src/services/sessi
 	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/services/session/include \
 		tests/kernel/pulse_session_bootstrap.c src/services/session/boot-mode.c -o $@
 
-$(PULSE_PARCEL_TEST): tests/kernel/pulse_parcel_bootstrap.c src/security/keys/key-space.c src/services/parcel/parcel.c
+$(PULSE_PARCEL_TEST): tests/kernel/pulse_parcel_bootstrap.c src/security/keys/key-space.c src/services/parcel/parcel.c src/apps/horizon/include/horizon.h
 	@mkdir -p $(dir $@)
-	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/security/keys/include -Isrc/services/parcel/include \
+	$(HOST_CC) -std=c17 -Wall -Wextra -Wpedantic -Werror -Isrc/platform/dawn/include -Isrc/ui/prism/include -Isrc/ui/canvas/include -Isrc/security/keys/include -Isrc/services/parcel/include -Isrc/apps/horizon/include \
 		tests/kernel/pulse_parcel_bootstrap.c src/security/keys/key-space.c src/services/parcel/parcel.c -o $@
 
 $(PULSE_CANVAS_TEST): tests/kernel/pulse_canvas_bootstrap.c src/ui/prism/framebuffer.c src/ui/canvas/scene.c
@@ -380,11 +380,11 @@ $(BIOS_IMAGE): $(BIOS_STAGE1_BIN) $(BIOS_STAGE2_BIN) $(PULSE_BIN)
 	dd if=$(PULSE_BIN) of=$@ bs=512 seek=$$((1 + $(PRELUDE_BIOS_STAGE2_SECTORS))) conv=notrunc
 
 check-uefi: $(ESP_IMAGE)
-	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: keyboard event queue verified" "ATLAS: PCI inventory verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "DAWN: ACPI child table inventory verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
+	tools/check-uefi.sh $(ESP_IMAGE) "ORIGIN: delegated key verified" "VAULT: redundant superblock recovered" "VAULT: journal commit verified" "VAULT: A/B slot state verified" "SESSION: launch policy verified" "PARCEL: signed manifest policy verified" "PARCEL: native launch admission verified" "PRISM: framebuffer painted" "CANVAS: retained scene rendered" "HORIZON: desktop scene rendered" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: keyboard event queue verified" "ATLAS: PCI inventory verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "DAWN: ACPI child table inventory verified" "PULSE: task context verified" "PULSE: timer interrupt handled"
 
 check-keyboard:
 	$(MAKE) BUILD_DIR=build-keyboard PULSE_PROBE=keyboard uefi-image
-	tools/check-keyboard.sh build-keyboard/vibeos-uefi-esp.img "ATLAS: keyboard irq probe ready" "HORIZON: keyboard focus redrawn" "HORIZON: keyboard selection redrawn"
+	tools/check-keyboard.sh build-keyboard/vibeos-uefi-esp.img "ATLAS: keyboard irq probe ready" "HORIZON: keyboard focus redrawn" "PARCEL: native launch request formed" "HORIZON: keyboard selection redrawn"
 
 check-bios: $(BIOS_IMAGE)
 	tools/check-bios.sh $(BIOS_IMAGE) "PRELUDE BIOS: Dawn Context sealed" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "DAWN: ACPI child table inventory verified" "PULSE: timer interrupt handled"

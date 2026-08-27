@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include <keys.h>
+#include <horizon.h>
 #include <parcel.h>
 
 static int expect(int condition, const char *message) {
@@ -17,13 +18,14 @@ int main(void) {
     PARCEL_MANIFEST manifest;
     PARCEL_INSTALL_REQUEST request;
     PARCEL_REGISTRY registry;
+    PARCEL_NATIVE_LAUNCH_REQUEST launch_request;
     VIBE_KEY authority;
     VIBE_KEY read_only;
 
     origin_keys_reset();
     parcel_manifest_initialize(
         &manifest,
-        "org.vibe.guide",
+        "org.vibe.cue",
         PARCEL_SCOPE_LOCAL,
         UINT64_C(8192),
         UINT32_C(0x11223344),
@@ -41,6 +43,13 @@ int main(void) {
         !expect(parcel_registry_install(&registry, authority, &request),
                     "write key installs verified manifest") ||
         !expect(registry.count == 1U, "registry stores installation") ||
+        !expect(parcel_native_launch_request_initialize(&launch_request, HORIZON_APPLICATION_CUE),
+                    "known native application forms a request") ||
+        !expect(parcel_native_launch_request_valid(&launch_request), "native launch request is valid") ||
+        !expect(parcel_registry_admits_native_launch(&registry, &launch_request),
+                    "installed native application is admitted") ||
+        !expect(!parcel_native_launch_request_initialize(&launch_request, UINT32_C(99)),
+                    "unknown native application is rejected") ||
         !expect(!parcel_registry_install(&registry, authority, &request),
                     "duplicate application identifier is rejected")) {
         return 1;

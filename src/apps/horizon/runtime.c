@@ -28,6 +28,7 @@ int horizon_desktop_runtime_step(
         return 0;
     }
     result->redraw_performed = 0U;
+    result->selected_application = (const void *)0;
     if (!horizon_input_pump(&runtime->desktop_state, maximum_events, &result->input)) {
         return 0;
     }
@@ -36,6 +37,10 @@ int horizon_desktop_runtime_step(
             return 0;
         }
         result->redraw_performed = 1U;
+    }
+    if (result->input.selection_requested != 0U &&
+        !horizon_selected_application(&runtime->desktop_state, &result->selected_application)) {
+        return 0;
     }
     return 1;
 }

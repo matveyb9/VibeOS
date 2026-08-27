@@ -113,6 +113,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         pulse_debug_write("VAULT: A/B slot state verified\n");
         pulse_debug_write("SESSION: launch policy verified\n");
         pulse_debug_write("PARCEL: signed manifest policy verified\n");
+        pulse_debug_write("PARCEL: native launch admission verified\n");
         pulse_debug_write("PRISM: framebuffer painted\n");
         pulse_debug_write("CANVAS: retained scene rendered\n");
         pulse_debug_write("HORIZON: desktop scene rendered\n");
@@ -139,6 +140,7 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
         PRISM_FRAMEBUFFER framebuffer;
         HORIZON_DESKTOP_RUNTIME desktop_runtime;
         HORIZON_DESKTOP_RUNTIME_STEP_RESULT desktop_step;
+        PARCEL_NATIVE_LAUNCH_REQUEST launch_request;
         uint32_t keyboard_redraw_count = 0U;
 
         if (!prism_framebuffer_from_dawn(context, &framebuffer) ||
@@ -157,6 +159,14 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
             if (!horizon_desktop_runtime_step(&desktop_runtime, HORIZON_INPUT_PUMP_MAX_EVENTS, &desktop_step)) {
                 pulse_debug_write("HORIZON: keyboard event pump failed\n");
                 pulse_debug_exit();
+            }
+            if (desktop_step.selected_application != (const void *)0) {
+                if (!parcel_native_launch_request_initialize(
+                        &launch_request, desktop_step.selected_application->id)) {
+                    pulse_debug_write("PARCEL: native launch request formation failed\n");
+                    pulse_debug_exit();
+                }
+                pulse_debug_write("PARCEL: native launch request formed\n");
             }
             if (desktop_step.redraw_performed != 0U) {
                 ++keyboard_redraw_count;

@@ -4,7 +4,7 @@
 
 # Bootstrap Parcel VPK
 
-**Статус:** Реализован как bootstrap manifest, registry и policy. Archive decoding и cryptographic signature verification пока не реализованы.
+**Статус:** Реализован как bootstrap manifest, registry, installation policy и data-only native launch-request admission. Archive decoding и cryptographic signature verification пока не реализованы.
 
 Теперь Parcel определяет строгий fixed-size VPK manifest для native application identifier, installation scope, payload length, payload checksum и requested right. Bounded registry принимает manifest только когда он structurally valid, caller владеет `WRITE` Key для Parcel registry object, manifest identifier ещё отсутствует и caller передал успешный результат signature verification.
 
@@ -17,5 +17,7 @@
 | Registry | 16 независимых manifest entry |
 | Authorization | `WRITE` Key на Parcel registry Pulse Object |
 | Signature result | Обязательный input installation policy; cryptographic verifier pending |
+| Native request | Bounded Prompt, Cue или Vector ID resolve в canonical Parcel application identifier |
+| Admission | Read-only lookup разрешает native request только когда его exact identifier уже находится в registry |
 
-QEMU probe создаёт только registry Key, требуемый Core manifest, устанавливает verified manifest и проверяет итоговый registry count. Host-тесты также отклоняют read-only installer, duplicate identifier и unverified request. Policy пока не утверждает, что сама проверяет digital signature; будущий `.vps` verifier должен передать результат `signature_verified`, прежде чем Parcel сможет использовать реальный package media.
+QEMU probe создаёт только registry Key, требуемый Core manifest, устанавливает verified Prompt manifest, проверяет итоговый registry count и допускает один matching native request. Host-тесты также отклоняют read-only installer, duplicate identifier, unverified request и unknown native ID. Horizon runtime selection может resolve native descriptor, а Pulse может сформировать этот Parcel request record; ни одна из этих операций не загружает package media, не исполняет code, не создаёт process, не предоставляет right и не изменяет registry. Policy пока не утверждает, что сама проверяет digital signature; будущий `.vps` verifier должен передать результат `signature_verified`, прежде чем Parcel сможет использовать реальный package media.

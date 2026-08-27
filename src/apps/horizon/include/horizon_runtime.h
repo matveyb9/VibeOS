@@ -17,6 +17,7 @@ typedef struct {
 typedef struct {
     HORIZON_INPUT_PUMP_RESULT input;
     uint32_t redraw_performed;
+    const HORIZON_APPLICATION_DESCRIPTOR *selected_application;
 } HORIZON_DESKTOP_RUNTIME_STEP_RESULT;
 
 int horizon_desktop_runtime_initialize(PRISM_FRAMEBUFFER *framebuffer, HORIZON_DESKTOP_RUNTIME *runtime);

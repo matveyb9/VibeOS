@@ -2,6 +2,8 @@
 
 #include "parcel.h"
 
+#include <horizon.h>
+
 static int parcel_identifier_valid(const char *identifier) {
     uint32_t index;
     char character;
@@ -42,6 +44,19 @@ static int parcel_identifier_equal(const char *left, const char *right) {
         }
     }
     return 0;
+}
+
+static const char *parcel_native_application_identifier(uint32_t native_application_id) {
+    if (native_application_id == HORIZON_APPLICATION_PROMPT) {
+        return "org.vibe.prompt";
+    }
+    if (native_application_id == HORIZON_APPLICATION_CUE) {
+        return "org.vibe.cue";
+    }
+    if (native_application_id == HORIZON_APPLICATION_VECTOR) {
+        return "org.vibe.vector";
+    }
+    return (const void *)0;
 }
 
 void parcel_manifest_initialize(
@@ -122,16 +137,64 @@ int parcel_registry_install(
     return 1;
 }
 
+int parcel_native_launch_request_initialize(
+    PARCEL_NATIVE_LAUNCH_REQUEST *request, uint32_t native_application_id) {
+    const char *application_id;
+    uint32_t index;
+
+    if (request == (void *)0 ||
+        (application_id = parcel_native_application_identifier(native_application_id)) == (const void *)0) {
+        return 0;
+    }
+    request->format_version = PARCEL_NATIVE_LAUNCH_REQUEST_VERSION;
+    request->native_application_id = native_application_id;
+    for (index = 0U; index < PARCEL_APPLICATION_ID_BYTES; ++index) {
+        request->application_id[index] = application_id[index];
+        if (application_id[index] == '\0') {
+            ++index;
+            break;
+        }
+    }
+    for (; index < PARCEL_APPLICATION_ID_BYTES; ++index) {
+        request->application_id[index] = '\0';
+    }
+    return 1;
+}
+
+int parcel_native_launch_request_valid(const PARCEL_NATIVE_LAUNCH_REQUEST *request) {
+    const char *application_id;
+
+    return request != (const void *)0 && request->format_version == PARCEL_NATIVE_LAUNCH_REQUEST_VERSION &&
+           (application_id = parcel_native_application_identifier(request->native_application_id)) != (const void *)0 &&
+           parcel_identifier_equal(request->application_id, application_id);
+}
+
+int parcel_registry_admits_native_launch(
+    const PARCEL_REGISTRY *registry, const PARCEL_NATIVE_LAUNCH_REQUEST *request) {
+    uint32_t index;
+
+    if (registry == (const void *)0 || !parcel_native_launch_request_valid(request)) {
+        return 0;
+    }
+    for (index = 0U; index < registry->count; ++index) {
+        if (parcel_identifier_equal(registry->entries[index].application_id, request->application_id)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 int parcel_runtime_probe(void) {
     PARCEL_MANIFEST manifest;
     PARCEL_INSTALL_REQUEST request;
     PARCEL_REGISTRY registry;
+    PARCEL_NATIVE_LAUNCH_REQUEST launch_request;
     VIBE_KEY installer_key;
 
     origin_keys_reset();
     parcel_manifest_initialize(
         &manifest,
-        "org.vibe.guide",
+        "org.vibe.prompt",
         PARCEL_SCOPE_CORE,
         UINT64_C(4096),
         UINT32_C(0x89abcdef),
@@ -143,5 +206,7 @@ int parcel_runtime_probe(void) {
     request.signature_verified = 1;
     parcel_registry_initialize(&registry);
     return origin_key_mint(PARCEL_REGISTRY_OBJECT, VIBE_RIGHT_WRITE, &installer_key) &&
-           parcel_registry_install(&registry, installer_key, &request) && registry.count == 1U;
+           parcel_registry_install(&registry, installer_key, &request) && registry.count == 1U &&
+           parcel_native_launch_request_initialize(&launch_request, HORIZON_APPLICATION_PROMPT) &&
+           parcel_registry_admits_native_launch(&registry, &launch_request);
 }

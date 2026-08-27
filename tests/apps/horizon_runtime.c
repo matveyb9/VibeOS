@@ -26,16 +26,19 @@ int main(void) {
         !expect(runtime.initialized == 1U && runtime.desktop_state.focused_window == 0U,
                 "runtime owns initialized focus state") ||
         !expect(horizon_desktop_runtime_step(&runtime, 1U, &result) && result.input.dequeued_event_count == 0U &&
-                    result.redraw_performed == 0U,
+                    result.redraw_performed == 0U && result.selected_application == (const void *)0,
                 "empty step does not redraw") ||
         !expect(atlas_keyboard_receive_scancode(UINT8_C(0x0f)) && horizon_desktop_runtime_step(&runtime, 1U, &result) &&
                     result.input.dequeued_event_count == 1U && result.input.handled_event_count == 1U &&
                     result.input.redraw_requested == 1U && result.redraw_performed == 1U &&
+                    result.selected_application == (const void *)0 &&
                     runtime.desktop_state.focused_window == 1U && pixels[(86U * 640U) + 233U] == UINT32_C(0x00e6f1ff),
                 "Tab event advances focus and redraws retained indicator") ||
         !expect(atlas_keyboard_receive_scancode(UINT8_C(0x1c)) && horizon_desktop_runtime_step(&runtime, 1U, &result) &&
                     result.input.dequeued_event_count == 1U && result.input.handled_event_count == 1U &&
                     result.redraw_performed == 1U && runtime.desktop_state.selected_window == 1U &&
+                    result.selected_application != (const void *)0 &&
+                    result.selected_application->id == HORIZON_APPLICATION_CUE &&
                     pixels[(246U * 640U) + 245U] == UINT32_C(0x00ffcf5c),
                 "following Enter selects the persisted focus and redraws amber strip") ||
         !expect(!horizon_desktop_runtime_step(&runtime, 0U, &result), "invalid pump budget is rejected") ||

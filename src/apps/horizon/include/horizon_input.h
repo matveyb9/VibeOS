@@ -15,6 +15,7 @@ typedef struct {
     uint32_t dequeued_event_count;
     uint32_t handled_event_count;
     uint32_t redraw_requested;
+    uint32_t selection_requested;
 } HORIZON_INPUT_PUMP_RESULT;
 
 int horizon_input_apply_event(
