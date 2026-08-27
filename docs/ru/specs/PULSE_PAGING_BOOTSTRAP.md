@@ -2,29 +2,29 @@
   <a href="../../en/specs/PULSE_PAGING_BOOTSTRAP.md">🇺🇸 ENGLISH</a> &nbsp;|&nbsp; <strong>🇷🇺 РУССКИЙ</strong>
 </p>
 
-# Bootstrap paging Pulse для x86_64
+# Bootstrap paging Pulse x86_64
 
-**Статус:** Реализован и проверен в первом профиле x86_64 QEMU UEFI.
+**Статус:** Реализован и проверен в начальном профиле x86_64 QEMU UEFI.
 
-После настройки собственного стека и раннего источника physical frame Pulse создаёт четырёхуровневую иерархию page table и загружает адрес собственного PML4 в `CR3`. Так управление page table переходит от firmware к намеренно небольшому адресному пространству Pulse. Intel System Programming Guide описывает четырёхуровневый paging, корень `CR3`, записи paging-structure и семантику их трансляции.[1]
+После создания собственного stack и раннего physical-frame source Pulse формирует four-level page-table hierarchy и загружает свой адрес PML4 в `CR3`. Intel System Programming Guide описывает four-level paging, root `CR3`, paging-structure entry и их translation semantics.[1]
 
-## Начальное отображение
+## Начальное mapping
 
 | Свойство | Значение |
 |---|---|
-| Виртуальный диапазон | от `0x00000000` до `0x3fffffff` |
-| Физический диапазон | Идентичен виртуальному диапазону |
-| Размер | 1 ГиБ |
-| Структура | PML4 → PDPT → page directory |
-| Размер leaf | Страницы по 2 МиБ |
-| Права | Present и writable; executable, пока активен ранний bootstrap |
-| LA57 | Явно отклоняется в этой первой четырёхуровневой реализации |
+| Virtual range | `0x00000000` до `0xffffffff` |
+| Physical range | Идентичен virtual range |
+| Размер | 4 ГиБ |
+| Structure | PML4 → PDPT → четыре page directory |
+| Leaf size | Page по 2 МиБ |
+| Permissions | Present и writable; executable, пока действует ранний bootstrap |
+| LA57 | Явно отклоняется в этой первой four-level implementation |
 
-Первый ГиБ намеренно сохраняет identity access к Pulse по адресу 2 МиБ, Dawn Context от loader, раннему стеку, активным page table и low I/O layout QEMU. Загрузка `CR3` сбрасывает активный translation context перед тем, как Pulse выведет проверяемую diagnostic marker.
+Identity range четырёх ГиБ сохраняет доступ к Pulse на 2 МиБ, Dawn Context, раннему stack, активным page table, low I/O layout QEMU и firmware framebuffer range для первой Prism software-renderer milestone. Он намеренно широк и включает region, которые будущие mapping Pulse классифицируют как RAM или MMIO до применения более узких permissions.
 
 ## Ограничения и следующее изменение
 
-Это не финальная virtual-memory layout и не финальная permission model. Здесь нет higher-half kernel mapping, user address space, guard page, kernel mapping isolation и write/execute separation. На следующем шаге памяти будут зарезервированы все boot-owned range и создан physical allocator с учётом владения, до появления более узких mappings.
+Это не финальный virtual-memory layout и не финальная permission model. Здесь нет higher-half kernel mapping, user address space, guard page, kernel mapping isolation и write/execute separation. Следующий memory step зарезервирует boot-owned range и построит ownership-aware physical allocator до введения более узких mapping.
 
 ## Источник
 

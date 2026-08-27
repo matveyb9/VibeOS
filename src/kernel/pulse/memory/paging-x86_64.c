@@ -1,9 +1,9 @@
 /*
  * VibeOS Pulse — early x86_64 four-level identity mapping.
  *
- * The map covers physical and virtual addresses from 0 through 1 GiB with
- * 2 MiB pages. It exists solely to take ownership of CR3 before higher-half
- * layout, W^X permissions, and fine-grained virtual-memory policy arrive.
+ * The temporary map covers the lower 4 GiB in 2 MiB pages. It contains the
+ * firmware framebuffer range used by the initial Prism software-renderer
+ * bootstrap, before Pulse introduces a narrower virtual-memory layout.
  */
 
 #include "memory.h"
@@ -16,6 +16,7 @@
 #define PULSE_X86_CR4_LA57 UINT64_C(0x1000)
 #define PULSE_X86_PAGE_ENTRIES UINT64_C(512)
 #define PULSE_X86_LARGE_PAGE_SIZE UINT64_C(0x200000)
+#define PULSE_X86_GIBIBYTE UINT64_C(0x40000000)
 
 static PULSE_PAGING_STATE early_paging_state;
 
@@ -41,55 +42,75 @@ static void pulse_write_cr3(uint64_t value) {
     __asm__ volatile("mov %0, %%cr3" : : "r"(value) : "memory");
 }
 
-int pulse_paging_build_identity_1g(
+int pulse_paging_build_identity_4g(
     uint64_t *pml4,
     uint64_t *pdpt,
-    uint64_t *page_directory,
+    uint64_t *page_directories[PULSE_X86_IDENTITY_PAGE_DIRECTORIES],
     uint64_t pml4_physical_address,
     uint64_t pdpt_physical_address,
-    uint64_t page_directory_physical_address) {
-    uint64_t index;
+    const uint64_t page_directory_physical_addresses[PULSE_X86_IDENTITY_PAGE_DIRECTORIES]) {
+    uint64_t directory_index;
+    uint64_t entry_index;
 
-    if (pml4 == (void *)0 || pdpt == (void *)0 || page_directory == (void *)0 ||
-        !pulse_is_page_aligned(pml4_physical_address) || !pulse_is_page_aligned(pdpt_physical_address) ||
-        !pulse_is_page_aligned(page_directory_physical_address)) {
+    if (pml4 == (void *)0 || pdpt == (void *)0 || page_directories == (void *)0 ||
+        page_directory_physical_addresses == (void *)0 || !pulse_is_page_aligned(pml4_physical_address) ||
+        !pulse_is_page_aligned(pdpt_physical_address)) {
         return 0;
+    }
+    for (directory_index = 0; directory_index < PULSE_X86_IDENTITY_PAGE_DIRECTORIES; ++directory_index) {
+        if (page_directories[directory_index] == (void *)0 ||
+            !pulse_is_page_aligned(page_directory_physical_addresses[directory_index])) {
+            return 0;
+        }
     }
 
     pulse_zero_page(pml4);
     pulse_zero_page(pdpt);
-    pulse_zero_page(page_directory);
-
     pml4[0] = (pdpt_physical_address & PULSE_X86_PAGE_ADDRESS_MASK) |
               PULSE_X86_PAGE_PRESENT | PULSE_X86_PAGE_WRITABLE;
-    pdpt[0] = (page_directory_physical_address & PULSE_X86_PAGE_ADDRESS_MASK) |
-              PULSE_X86_PAGE_PRESENT | PULSE_X86_PAGE_WRITABLE;
 
-    for (index = 0; index < PULSE_X86_PAGE_ENTRIES; ++index) {
-        page_directory[index] = (index * PULSE_X86_LARGE_PAGE_SIZE) |
-                                PULSE_X86_PAGE_PRESENT | PULSE_X86_PAGE_WRITABLE |
-                                PULSE_X86_PAGE_LARGE;
+    for (directory_index = 0; directory_index < PULSE_X86_IDENTITY_PAGE_DIRECTORIES; ++directory_index) {
+        uint64_t *page_directory = page_directories[directory_index];
+
+        pulse_zero_page(page_directory);
+        pdpt[directory_index] =
+            (page_directory_physical_addresses[directory_index] & PULSE_X86_PAGE_ADDRESS_MASK) |
+            PULSE_X86_PAGE_PRESENT | PULSE_X86_PAGE_WRITABLE;
+        for (entry_index = 0; entry_index < PULSE_X86_PAGE_ENTRIES; ++entry_index) {
+            page_directory[entry_index] = ((directory_index * PULSE_X86_GIBIBYTE) +
+                                           (entry_index * PULSE_X86_LARGE_PAGE_SIZE)) |
+                                          PULSE_X86_PAGE_PRESENT | PULSE_X86_PAGE_WRITABLE |
+                                          PULSE_X86_PAGE_LARGE;
+        }
     }
-
     return 1;
 }
 
 int pulse_paging_initialize(void) {
     uint64_t pml4_physical_address;
     uint64_t pdpt_physical_address;
-    uint64_t page_directory_physical_address;
+    uint64_t page_directory_physical_addresses[PULSE_X86_IDENTITY_PAGE_DIRECTORIES];
+    uint64_t *page_directories[PULSE_X86_IDENTITY_PAGE_DIRECTORIES];
+    uint64_t index;
 
     if ((pulse_read_cr4() & PULSE_X86_CR4_LA57) != 0U ||
         !pulse_memory_take_frame(&pml4_physical_address) ||
-        !pulse_memory_take_frame(&pdpt_physical_address) ||
-        !pulse_memory_take_frame(&page_directory_physical_address) ||
-        !pulse_paging_build_identity_1g(
+        !pulse_memory_take_frame(&pdpt_physical_address)) {
+        return 0;
+    }
+    for (index = 0; index < PULSE_X86_IDENTITY_PAGE_DIRECTORIES; ++index) {
+        if (!pulse_memory_take_frame(&page_directory_physical_addresses[index])) {
+            return 0;
+        }
+        page_directories[index] = (uint64_t *)(uintptr_t)page_directory_physical_addresses[index];
+    }
+    if (!pulse_paging_build_identity_4g(
             (uint64_t *)(uintptr_t)pml4_physical_address,
             (uint64_t *)(uintptr_t)pdpt_physical_address,
-            (uint64_t *)(uintptr_t)page_directory_physical_address,
+            page_directories,
             pml4_physical_address,
             pdpt_physical_address,
-            page_directory_physical_address)) {
+            page_directory_physical_addresses)) {
         return 0;
     }
 
