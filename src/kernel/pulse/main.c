@@ -23,6 +23,7 @@
 #include <horizon_input.h>
 #include <horizon_runtime.h>
 #include <atlas_input.h>
+#include <atlas_ata.h>
 #include <atlas_pci.h>
 
 int prism_canvas_runtime_probe(const DAWN_CONTEXT *context);
@@ -216,6 +217,13 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
                 }
             }
         }
+#elif defined(PULSE_PROBE_storage)
+        if (!atlas_ata_runtime_probe()) {
+            pulse_debug_write("ATLAS: ATA identify probe failed\n");
+            pulse_debug_exit();
+        }
+        pulse_debug_write("ATLAS: ATA identify verified\n");
+        pulse_debug_exit();
 #else
         if (!pulse_context_run_probe()) {
             pulse_debug_write("PULSE: task context bootstrap failed\n");
