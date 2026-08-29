@@ -9,6 +9,9 @@
 #define ATLAS_ATA_PIO_SPIN_LIMIT UINT32_C(1000000)
 #define ATLAS_ATA_PRIMARY_COMMAND_BASE UINT16_C(0x1f0)
 #define ATLAS_ATA_PRIMARY_CONTROL_BASE UINT16_C(0x3f6)
+#define ATLAS_ATA_SECTOR_BYTES UINT32_C(512)
+#define ATLAS_ATA_SECTOR_WORDS UINT32_C(256)
+#define ATLAS_ATA_LBA28_SECTOR_LIMIT UINT32_C(0x10000000)
 
 typedef uint8_t (*ATLAS_ATA_IN8)(void *context, uint16_t port);
 typedef void (*ATLAS_ATA_OUT8)(void *context, uint16_t port, uint8_t value);
@@ -34,6 +37,15 @@ int atlas_ata_pio_identify(
     uint16_t control_base,
     uint8_t device,
     ATLAS_ATA_IDENTIFY_INFO *info);
+int atlas_ata_pio_read_sector_lba28(
+    const ATLAS_ATA_PIO_TRANSPORT *transport,
+    uint16_t command_base,
+    uint16_t control_base,
+    uint8_t device,
+    const ATLAS_ATA_IDENTIFY_INFO *info,
+    uint32_t lba,
+    uint16_t sector_words[ATLAS_ATA_SECTOR_WORDS]);
 int atlas_ata_runtime_probe(void);
+int atlas_ata_runtime_sector_read_probe(void);
 
 #endif

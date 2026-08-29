@@ -415,7 +415,7 @@ check-keyboard:
 
 check-storage:
 	$(MAKE) BUILD_DIR=build-storage PULSE_PROBE=storage uefi-image
-	tools/check-storage.sh build-storage/vibeos-uefi-esp.img "ATLAS: ATA identify verified"
+	tools/check-storage.sh build-storage/vibeos-uefi-esp.img "ATLAS: ATA identify and sector read verified"
 
 check-bios: $(BIOS_IMAGE)
 	tools/check-bios.sh $(BIOS_IMAGE) "PRELUDE BIOS: Dawn Context sealed" "HORIZON: desktop focus model verified" "HORIZON: keyboard focus adapter verified" "ATLAS: PCI resource inventory verified" "DAWN: ACPI RSDP handoff verified" "DAWN: ACPI root table metadata verified" "DAWN: ACPI child table inventory verified" "DAWN: ACPI MADT metadata inventory verified" "DAWN: ACPI x86 APIC metadata inventory verified" "PULSE: x86 APIC handoff plan verified" "PULSE: PIT timer source policy verified" "PULSE: legacy IRQ-to-GSI metadata verified" "PULSE: timer interrupt handled"

@@ -14,6 +14,9 @@
 #define ATLAS_ATA_STATUS_DF UINT8_C(0x20)
 #define ATLAS_ATA_STATUS_BSY UINT8_C(0x80)
 #define ATLAS_ATA_COMMAND_IDENTIFY_DEVICE UINT8_C(0xec)
+#define ATLAS_ATA_COMMAND_READ_SECTORS UINT8_C(0x20)
+#define ATLAS_ATA_STATUS_READY UINT8_C(0x40)
+#define ATLAS_ATA_DEVICE_LBA_MODE UINT8_C(0x40)
 #define ATLAS_ATA_DEVICE_SELECT_BASE UINT8_C(0xa0)
 #define ATLAS_ATA_DEVICE_SELECT_SLAVE UINT8_C(0x10)
 #define ATLAS_ATA_LBA48_SUPPORTED UINT16_C(0x0400)
@@ -121,6 +124,62 @@ int atlas_ata_pio_identify(
     return 0;
 }
 
+int atlas_ata_pio_read_sector_lba28(
+    const ATLAS_ATA_PIO_TRANSPORT *transport,
+    uint16_t command_base,
+    uint16_t control_base,
+    uint8_t device,
+    const ATLAS_ATA_IDENTIFY_INFO *info,
+    uint32_t lba,
+    uint16_t sector_words[ATLAS_ATA_SECTOR_WORDS]) {
+    uint8_t status;
+    uint32_t index;
+
+    if (transport == (const void *)0 || transport->in8 == (void *)0 || transport->out8 == (void *)0 ||
+        transport->in16 == (void *)0 || info == (const void *)0 || sector_words == (void *)0 ||
+        device > 1U || info->logical_sector_count == 0U || lba >= ATLAS_ATA_LBA28_SECTOR_LIMIT ||
+        (uint64_t)lba >= info->logical_sector_count ||
+        command_base > UINT16_MAX - ATLAS_ATA_REGISTER_STATUS_COMMAND) {
+        return 0;
+    }
+    if (transport->in8(transport->context, command_base + ATLAS_ATA_REGISTER_STATUS_COMMAND) == UINT8_MAX) {
+        return 0;
+    }
+    transport->out8(transport->context, command_base + ATLAS_ATA_REGISTER_DEVICE,
+                    (uint8_t)(ATLAS_ATA_DEVICE_SELECT_BASE | ATLAS_ATA_DEVICE_LBA_MODE |
+                              (device == 0U ? 0U : ATLAS_ATA_DEVICE_SELECT_SLAVE) |
+                              (uint8_t)((lba >> 24U) & UINT32_C(0x0f))));
+    for (index = 0U; index < 15U; ++index) {
+        (void)transport->in8(transport->context, control_base);
+    }
+    status = transport->in8(transport->context, control_base);
+    if ((status & (ATLAS_ATA_STATUS_BSY | ATLAS_ATA_STATUS_DRQ)) != 0U ||
+        (status & (ATLAS_ATA_STATUS_ERR | ATLAS_ATA_STATUS_DF)) != 0U) {
+        return 0;
+    }
+    transport->out8(transport->context, command_base + ATLAS_ATA_REGISTER_SECTOR_COUNT, 1U);
+    transport->out8(transport->context, command_base + ATLAS_ATA_REGISTER_LBA_LOW, (uint8_t)lba);
+    transport->out8(transport->context, command_base + ATLAS_ATA_REGISTER_LBA_MID, (uint8_t)(lba >> 8U));
+    transport->out8(transport->context, command_base + ATLAS_ATA_REGISTER_LBA_HIGH, (uint8_t)(lba >> 16U));
+    transport->out8(transport->context, command_base + ATLAS_ATA_REGISTER_STATUS_COMMAND,
+                    ATLAS_ATA_COMMAND_READ_SECTORS);
+    for (index = 0U; index < ATLAS_ATA_PIO_SPIN_LIMIT; ++index) {
+        status = transport->in8(transport->context, control_base);
+        if (status == 0U || (status & (ATLAS_ATA_STATUS_ERR | ATLAS_ATA_STATUS_DF)) != 0U) {
+            return 0;
+        }
+        if ((status & ATLAS_ATA_STATUS_BSY) == 0U && (status & ATLAS_ATA_STATUS_DRQ) != 0U) {
+            uint32_t word_index;
+
+            for (word_index = 0U; word_index < ATLAS_ATA_SECTOR_WORDS; ++word_index) {
+                sector_words[word_index] = transport->in16(transport->context, command_base + ATLAS_ATA_REGISTER_DATA);
+            }
+            return 1;
+        }
+    }
+    return 0;
+}
+
 int atlas_ata_runtime_probe(void) {
     const ATLAS_ATA_PIO_TRANSPORT transport = {
         atlas_ata_x86_in8, atlas_ata_x86_out8, atlas_ata_x86_in16, (void *)0};
@@ -129,4 +188,17 @@ int atlas_ata_runtime_probe(void) {
     return atlas_ata_pio_identify(&transport, ATLAS_ATA_PRIMARY_COMMAND_BASE,
                                   ATLAS_ATA_PRIMARY_CONTROL_BASE, 0U, &info) &&
            info.logical_sector_count != 0U;
+}
+
+int atlas_ata_runtime_sector_read_probe(void) {
+    const ATLAS_ATA_PIO_TRANSPORT transport = {
+        atlas_ata_x86_in8, atlas_ata_x86_out8, atlas_ata_x86_in16, (void *)0};
+    ATLAS_ATA_IDENTIFY_INFO info;
+    uint16_t sector_words[ATLAS_ATA_SECTOR_WORDS];
+
+    return atlas_ata_pio_identify(&transport, ATLAS_ATA_PRIMARY_COMMAND_BASE,
+                                  ATLAS_ATA_PRIMARY_CONTROL_BASE, 0U, &info) &&
+           atlas_ata_pio_read_sector_lba28(&transport, ATLAS_ATA_PRIMARY_COMMAND_BASE,
+                                           ATLAS_ATA_PRIMARY_CONTROL_BASE, 0U, &info, 0U,
+                                           sector_words);
 }

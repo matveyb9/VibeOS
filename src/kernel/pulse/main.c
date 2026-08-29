@@ -218,11 +218,11 @@ __attribute__((noreturn)) void pulse_entry(const DAWN_CONTEXT *context) {
             }
         }
 #elif defined(PULSE_PROBE_storage)
-        if (!atlas_ata_runtime_probe()) {
-            pulse_debug_write("ATLAS: ATA identify probe failed\n");
+        if (!atlas_ata_runtime_sector_read_probe()) {
+            pulse_debug_write("ATLAS: ATA sector read probe failed\n");
             pulse_debug_exit();
         }
-        pulse_debug_write("ATLAS: ATA identify verified\n");
+        pulse_debug_write("ATLAS: ATA identify and sector read verified\n");
         pulse_debug_exit();
 #else
         if (!pulse_context_run_probe()) {

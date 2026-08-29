@@ -7,6 +7,7 @@ typedef struct {
     uint32_t data_index;
     uint32_t output_count;
     uint8_t command_issued;
+    uint8_t read_mode;
     uint8_t floating;
     uint8_t error;
     uint8_t last_command;
@@ -40,6 +41,8 @@ static void fake_out8(void *context, uint16_t port, uint8_t value) {
     ++fake->output_count;
     if (port == ATLAS_ATA_PRIMARY_COMMAND_BASE + 7U) {
         fake->command_issued = 1U;
+        fake->read_mode = (value == UINT8_C(0x20)) ? 1U : 0U;
+        fake->data_index = UINT32_MAX;
         fake->last_command = value;
     }
 }
@@ -65,9 +68,11 @@ static void fake_initialize(FAKE_ATA *fake) {
     fake->data_index = UINT32_MAX;
     fake->output_count = 0U;
     fake->command_issued = 0U;
+    fake->read_mode = 0U;
     fake->floating = 0U;
     fake->error = 0U;
     fake->last_command = 0U;
+    fake->words[0] = UINT16_C(0xbeef);
     fake->words[60] = UINT16_C(0x1234);
     fake->words[61] = UINT16_C(0x0002);
 }
@@ -86,6 +91,14 @@ int main(void) {
         return 1;
     }
     fake_initialize(&fake);
+    if (info.logical_sector_count == 0U || !atlas_ata_pio_read_sector_lba28(
+            &transport, ATLAS_ATA_PRIMARY_COMMAND_BASE, ATLAS_ATA_PRIMARY_CONTROL_BASE, 0U,
+            &info, 7U, fake.words) || fake.last_command != UINT8_C(0x20) ||
+        fake.words[0] != UINT16_C(0xbeef)) {
+        fputs("Atlas ATA LBA28 sector read test failed.\n", stderr);
+        return 1;
+    }
+    fake_initialize(&fake);
     fake.words[83] = UINT16_C(0x0400);
     fake.words[100] = UINT16_C(0x0001);
     fake.words[102] = UINT16_C(0x0001);
@@ -93,6 +106,14 @@ int main(void) {
                                 ATLAS_ATA_PRIMARY_CONTROL_BASE, 1U, &info) ||
         info.logical_sector_count != UINT64_C(0x100000001) || info.lba48_supported != 1U) {
         fputs("Atlas ATA LBA48 identify test failed.\n", stderr);
+        return 1;
+    }
+    fake_initialize(&fake);
+    if (atlas_ata_pio_read_sector_lba28(
+            &transport, ATLAS_ATA_PRIMARY_COMMAND_BASE, ATLAS_ATA_PRIMARY_CONTROL_BASE, 0U,
+            &info, ATLAS_ATA_LBA28_SECTOR_LIMIT, fake.words) ||
+        fake.words[0] != UINT16_C(0xbeef)) {
+        fputs("Atlas ATA out-of-range sector was accepted.\n", stderr);
         return 1;
     }
     fake_initialize(&fake);
