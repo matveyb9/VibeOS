@@ -104,11 +104,16 @@ int main(void) {
         atlas_ata_device_handle_matches(&handle, ATLAS_ATA_PRIMARY_COMMAND_BASE,
                                         ATLAS_ATA_PRIMARY_CONTROL_BASE, 0U, &info,
                                         UINT64_C(0x8877665544332211)) ||
-        !atlas_ata_pio_read_sector_lba28(
-            &transport, ATLAS_ATA_PRIMARY_COMMAND_BASE, ATLAS_ATA_PRIMARY_CONTROL_BASE, 0U,
-            &info, 7U, fake.words) || fake.last_command != UINT8_C(0x20) ||
-        fake.words[0] != UINT16_C(0xbeef)) {
+        !atlas_ata_block_read_one(
+            &transport, &handle, &info, UINT64_C(0x1122334455667788), 7U, fake.words) ||
+        fake.last_command != UINT8_C(0x20) || fake.words[0] != UINT16_C(0xbeef)) {
         fputs("Atlas ATA LBA28 sector read test failed.\n", stderr);
+        return 1;
+    }
+    fake.words[0] = UINT16_C(0xbeef);
+    if (atlas_ata_block_read_one(&transport, &handle, &info, UINT64_C(0x8877665544332211),
+                                 7U, fake.words) || fake.words[0] != UINT16_C(0xbeef)) {
+        fputs("Atlas ATA stale device handle was accepted.\n", stderr);
         return 1;
     }
     fake_initialize(&fake);

@@ -160,6 +160,23 @@ int atlas_ata_pio_identify(
     return 0;
 }
 
+int atlas_ata_block_read_one(
+    const ATLAS_ATA_PIO_TRANSPORT *transport,
+    const ATLAS_ATA_DEVICE_HANDLE *handle,
+    const ATLAS_ATA_IDENTIFY_INFO *info,
+    uint64_t identity_fingerprint,
+    uint32_t lba,
+    uint16_t sector_words[ATLAS_ATA_SECTOR_WORDS]) {
+    if (!atlas_ata_device_handle_matches(handle, handle == (const void *)0 ? 0U : handle->command_base,
+                                         handle == (const void *)0 ? 0U : handle->control_base,
+                                         handle == (const void *)0 ? 2U : handle->device, info,
+                                         identity_fingerprint)) {
+        return 0;
+    }
+    return atlas_ata_pio_read_sector_lba28(transport, handle->command_base, handle->control_base,
+                                           handle->device, info, lba, sector_words);
+}
+
 int atlas_ata_pio_read_sector_lba28(
     const ATLAS_ATA_PIO_TRANSPORT *transport,
     uint16_t command_base,

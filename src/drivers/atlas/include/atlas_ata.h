@@ -61,6 +61,13 @@ int atlas_ata_pio_identify(
     uint16_t control_base,
     uint8_t device,
     ATLAS_ATA_IDENTIFY_INFO *info);
+int atlas_ata_block_read_one(
+    const ATLAS_ATA_PIO_TRANSPORT *transport,
+    const ATLAS_ATA_DEVICE_HANDLE *handle,
+    const ATLAS_ATA_IDENTIFY_INFO *info,
+    uint64_t identity_fingerprint,
+    uint32_t lba,
+    uint16_t sector_words[ATLAS_ATA_SECTOR_WORDS]);
 int atlas_ata_pio_read_sector_lba28(
     const ATLAS_ATA_PIO_TRANSPORT *transport,
     uint16_t command_base,
