@@ -42,6 +42,42 @@ static uint16_t atlas_ata_x86_in16(void *context, uint16_t port) {
     return value;
 }
 
+int atlas_ata_device_handle_admit(
+    uint16_t command_base,
+    uint16_t control_base,
+    uint8_t device,
+    const ATLAS_ATA_IDENTIFY_INFO *info,
+    uint64_t identity_fingerprint,
+    ATLAS_ATA_DEVICE_HANDLE *handle) {
+    if (info == (const void *)0 || handle == (void *)0 || device > 1U ||
+        command_base > UINT16_MAX - ATLAS_ATA_REGISTER_STATUS_COMMAND ||
+        control_base == UINT16_MAX || info->logical_sector_count == 0U ||
+        identity_fingerprint == 0U) {
+        return 0;
+    }
+    handle->command_base = command_base;
+    handle->control_base = control_base;
+    handle->device = device;
+    handle->version = ATLAS_ATA_DEVICE_HANDLE_VERSION;
+    handle->logical_sector_count = info->logical_sector_count;
+    handle->identity_fingerprint = identity_fingerprint;
+    return 1;
+}
+
+int atlas_ata_device_handle_matches(
+    const ATLAS_ATA_DEVICE_HANDLE *handle,
+    uint16_t command_base,
+    uint16_t control_base,
+    uint8_t device,
+    const ATLAS_ATA_IDENTIFY_INFO *info,
+    uint64_t identity_fingerprint) {
+    return handle != (const void *)0 && info != (const void *)0 && device <= 1U &&
+           handle->version == ATLAS_ATA_DEVICE_HANDLE_VERSION &&
+           handle->command_base == command_base && handle->control_base == control_base &&
+           handle->device == device && handle->logical_sector_count == info->logical_sector_count &&
+           handle->identity_fingerprint == identity_fingerprint && identity_fingerprint != 0U;
+}
+
 int atlas_ata_identify_parse(
     const uint16_t words[ATLAS_ATA_IDENTIFY_WORDS], ATLAS_ATA_IDENTIFY_INFO *info) {
     uint64_t lba28;

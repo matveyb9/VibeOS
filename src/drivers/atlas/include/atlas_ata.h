@@ -12,6 +12,7 @@
 #define ATLAS_ATA_SECTOR_BYTES UINT32_C(512)
 #define ATLAS_ATA_SECTOR_WORDS UINT32_C(256)
 #define ATLAS_ATA_LBA28_SECTOR_LIMIT UINT32_C(0x10000000)
+#define ATLAS_ATA_DEVICE_HANDLE_VERSION UINT8_C(1)
 
 typedef uint8_t (*ATLAS_ATA_IN8)(void *context, uint16_t port);
 typedef void (*ATLAS_ATA_OUT8)(void *context, uint16_t port, uint8_t value);
@@ -29,6 +30,29 @@ typedef struct {
     uint8_t lba48_supported;
 } ATLAS_ATA_IDENTIFY_INFO;
 
+typedef struct {
+    uint16_t command_base;
+    uint16_t control_base;
+    uint8_t device;
+    uint8_t version;
+    uint64_t logical_sector_count;
+    uint64_t identity_fingerprint;
+} ATLAS_ATA_DEVICE_HANDLE;
+
+int atlas_ata_device_handle_admit(
+    uint16_t command_base,
+    uint16_t control_base,
+    uint8_t device,
+    const ATLAS_ATA_IDENTIFY_INFO *info,
+    uint64_t identity_fingerprint,
+    ATLAS_ATA_DEVICE_HANDLE *handle);
+int atlas_ata_device_handle_matches(
+    const ATLAS_ATA_DEVICE_HANDLE *handle,
+    uint16_t command_base,
+    uint16_t control_base,
+    uint8_t device,
+    const ATLAS_ATA_IDENTIFY_INFO *info,
+    uint64_t identity_fingerprint);
 int atlas_ata_identify_parse(
     const uint16_t words[ATLAS_ATA_IDENTIFY_WORDS], ATLAS_ATA_IDENTIFY_INFO *info);
 int atlas_ata_pio_identify(

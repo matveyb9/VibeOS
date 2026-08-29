@@ -80,6 +80,7 @@ static void fake_initialize(FAKE_ATA *fake) {
 int main(void) {
     FAKE_ATA fake;
     ATLAS_ATA_IDENTIFY_INFO info;
+    ATLAS_ATA_DEVICE_HANDLE handle;
     ATLAS_ATA_PIO_TRANSPORT transport = {fake_in8, fake_out8, fake_in16, &fake};
 
     fake_initialize(&fake);
@@ -91,7 +92,19 @@ int main(void) {
         return 1;
     }
     fake_initialize(&fake);
-    if (info.logical_sector_count == 0U || !atlas_ata_pio_read_sector_lba28(
+    if (info.logical_sector_count == 0U || !atlas_ata_device_handle_admit(
+            ATLAS_ATA_PRIMARY_COMMAND_BASE, ATLAS_ATA_PRIMARY_CONTROL_BASE, 0U, &info,
+            UINT64_C(0x1122334455667788), &handle) ||
+        !atlas_ata_device_handle_matches(&handle, ATLAS_ATA_PRIMARY_COMMAND_BASE,
+                                         ATLAS_ATA_PRIMARY_CONTROL_BASE, 0U, &info,
+                                         UINT64_C(0x1122334455667788)) ||
+        atlas_ata_device_handle_matches(&handle, ATLAS_ATA_PRIMARY_COMMAND_BASE,
+                                        ATLAS_ATA_PRIMARY_CONTROL_BASE, 1U, &info,
+                                        UINT64_C(0x1122334455667788)) ||
+        atlas_ata_device_handle_matches(&handle, ATLAS_ATA_PRIMARY_COMMAND_BASE,
+                                        ATLAS_ATA_PRIMARY_CONTROL_BASE, 0U, &info,
+                                        UINT64_C(0x8877665544332211)) ||
+        !atlas_ata_pio_read_sector_lba28(
             &transport, ATLAS_ATA_PRIMARY_COMMAND_BASE, ATLAS_ATA_PRIMARY_CONTROL_BASE, 0U,
             &info, 7U, fake.words) || fake.last_command != UINT8_C(0x20) ||
         fake.words[0] != UINT16_C(0xbeef)) {
@@ -99,6 +112,13 @@ int main(void) {
         return 1;
     }
     fake_initialize(&fake);
+    if (atlas_ata_device_handle_admit(ATLAS_ATA_PRIMARY_COMMAND_BASE, ATLAS_ATA_PRIMARY_CONTROL_BASE,
+                                      0U, &info, 0U, &handle) ||
+        atlas_ata_device_handle_admit(UINT16_MAX, ATLAS_ATA_PRIMARY_CONTROL_BASE, 0U,
+                                      &info, UINT64_C(1), &handle)) {
+        fputs("Atlas ATA invalid device ownership was accepted.\n", stderr);
+        return 1;
+    }
     fake.words[83] = UINT16_C(0x0400);
     fake.words[100] = UINT16_C(0x0001);
     fake.words[102] = UINT16_C(0x0001);
